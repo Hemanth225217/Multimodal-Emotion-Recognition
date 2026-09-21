@@ -6,7 +6,7 @@ class MultimodalFusionModel(nn.Module):
 
     def __init__(
         self,
-        text_dim=600,
+        text_dim=768,
         audio_dim=300,
         video_dim=512,
         hidden_dim=256,

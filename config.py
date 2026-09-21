@@ -24,7 +24,9 @@ MELD_ANNOTATIONS_DIR = PROJECT_ROOT / "meld_dataset" / "raw"
 # Model dimensions (fixed by the pre-extracted MELD baseline features)
 # --------------------------------------------------------------------------
 
-TEXT_DIM = 600
+# TEXT_DIM is 768 (frozen DistilBERT, see modules/text_features_distilbert.py)
+# rather than the original MELD paper's 600-D task-specific CNN features.
+TEXT_DIM = 768
 AUDIO_DIM = 300
 VIDEO_DIM = 512
 HIDDEN_DIM = 256

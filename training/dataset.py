@@ -44,7 +44,7 @@ class MELDDataset(Dataset):
     Each sample represents one complete MELD dialogue.
 
     Text:
-        [utterances, 600]
+        [utterances, 768]
 
     Audio:
         [utterances, 300]

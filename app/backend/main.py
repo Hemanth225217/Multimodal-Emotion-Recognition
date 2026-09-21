@@ -1,15 +1,16 @@
 """FastAPI backend for the multimodal emotion recognition demo.
 
-Design note: the model was trained on the MELD baseline paper's pre-extracted
-600-D text / 300-D audio features, whose original extractors (a CNN text
-encoder and an openSMILE audio config) were never released alongside the
-features. There is no way to reproduce those exact feature spaces for a
-brand-new sentence or audio clip, so this API serves predictions over real
-MELD test-set dialogues (for which we do have correct features) rather than
-pretending to accept arbitrary uploads. Every /predict call is a genuine
-forward pass through the trained model -- nothing here is mocked. The
-missing-modality toggle is real too: setting use_audio=false actually zeroes
-the audio tensor and re-runs the model.
+Design note: text uses frozen DistilBERT embeddings (768-D, publicly
+available -- could in principle embed arbitrary new sentences, though that
+isn't wired up here yet). Audio still uses the original MELD paper's 300-D
+openSMILE-style features, whose extractor config was never released, so
+there's no way to reproduce that exact feature space for a brand-new audio
+clip. Given audio is the constraint, this API serves predictions over real
+MELD test-set dialogues (for which we do have correct features for every
+modality) rather than accepting partial uploads. Every /predict call is a
+genuine forward pass through the trained model -- nothing here is mocked.
+The missing-modality toggle is real too: setting use_audio=false actually
+zeroes the audio tensor and re-runs the model.
 """
 
 import sys

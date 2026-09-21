@@ -32,31 +32,42 @@ the fusion model's confidence and correctness (`evaluation/disagreement_analysis
 
 ## Honesty notes (please read before citing numbers from this repo)
 
-- **Features are pre-extracted, not end-to-end.** Text (600-D) and audio
-  (300-D) features come from the original MELD baseline paper's released
-  `MELD.Features.Models` package, not from fine-tuning BERT/Wav2Vec2 here.
-  Video features (512-D) are extracted locally with a frozen ImageNet
-  ResNet-18 (8 sampled frames, mean-pooled) because the project's hardware
-  (Intel Core Ultra 5 225U, no CUDA GPU) can't run a ViT/Wav2Vec2 extraction
-  pipeline in reasonable time. Accurately: *"a multimodal deep-learning
-  framework using pre-extracted textual/acoustic representations and locally
-  extracted visual representations, followed by BiLSTM temporal encoding,
-  cross-modal attention, adaptive fusion, and conversational context
-  modelling."*
-- **The web demo browses real MELD test examples, not arbitrary uploads.**
-  The original text/audio feature extractors (a CNN text encoder and an
-  openSMILE config) were never publicly released, so there's no way to map a
-  brand-new sentence or audio clip into the same 600-D/300-D feature space
-  the model was trained on. Every prediction in the demo is a genuine forward
-  pass through the trained model on a real test utterance, including the
-  missing-modality toggle (it actually zeroes that modality's input tensor
-  and re-runs the model) -- nothing is mocked or pre-computed.
+- **Features are pre-extracted, not end-to-end.** Text (768-D) comes from
+  frozen DistilBERT (mean-pooled token embeddings, no fine-tuning --
+  `modules/text_features_distilbert.py`). Audio (300-D) still comes from the
+  original MELD baseline paper's released `MELD.Features.Models` package
+  (openSMILE-style features) -- its extractor was never publicly released, so
+  it can't be swapped the same way. Video features (512-D) are extracted
+  locally with a frozen ImageNet ResNet-18 (8 sampled frames, mean-pooled)
+  because the project's hardware (Intel Core Ultra 5 225U, no CUDA GPU) can't
+  run a ViT extraction pipeline in reasonable time. Accurately: *"a
+  multimodal deep-learning framework using frozen pretrained text embeddings,
+  pre-extracted acoustic features, and locally extracted visual
+  representations, followed by BiLSTM temporal encoding, cross-modal
+  attention, adaptive fusion, and conversational context modelling."* Text
+  was originally also a 2018-era task-specific CNN feature (600-D, same
+  package as audio) -- swapping it for DistilBERT lifted accuracy from
+  58.35% to 61.69% (see Results); `modules/data_loader.py` keeps the
+  original loader available (`load_original_text_features()`) for comparison.
+- **The web demo browses real MELD test examples, not arbitrary uploads --
+  specifically because of audio, not text anymore.** DistilBERT is a public
+  model, so arbitrary new text *could* now be embedded into a compatible
+  feature space (not wired up in the API yet). Audio remains the blocker: the
+  openSMILE-style extractor config was never published, so a brand-new audio
+  clip can't be mapped into the same 300-D space the model was trained on.
+  Every prediction in the demo is a genuine forward pass through the trained
+  model on a real test utterance, including the missing-modality toggle (it
+  actually zeroes that modality's input tensor and re-runs the model) --
+  nothing is mocked or pre-computed.
 - **The model does not solve all seven emotions equally well.** Fear and
-  disgust have very little training data (~2.7% each) and F1 for those
-  classes is near zero. See `evaluation/evaluate_final.py` for the full
-  per-class breakdown. The project's contribution is the fusion/context/
-  adaptive-weighting/disagreement architecture and analysis, not a claim of
-  uniformly solved emotion recognition.
+  disgust have very little training data (~2.7% each). Disgust F1 is exactly
+  0 across every version of this project, historical or current -- the model
+  never once predicts it. Fear F1 was also exactly 0 in every version until
+  the DistilBERT text upgrade, which got it to a still-poor-but-nonzero
+  0.092 (3/50 correctly classified). See `evaluation/evaluate_final.py` for
+  the full per-class breakdown. The project's contribution is the
+  fusion/context/adaptive-weighting/disagreement architecture and analysis,
+  not a claim of uniformly solved emotion recognition.
 - **The adaptive weighting network initially collapsed onto text ("modality
   collapse"), and fixing it took five training runs -- documented here rather
   than quietly overwritten, because the failed attempts are informative.**
@@ -97,27 +108,37 @@ the fusion model's confidence and correctness (`evaluation/disagreement_analysis
 
 `training/train_final.py`: adaptive fusion architecture, moderate class
 weighting, gentle focal loss, modality dropout, and a modality-weight cap
-penalty (see the modality-collapse note above for why the last two are
-there). Checkpoint selection uses validation **weighted F1**, not macro F1 --
-macro F1 alone picked an unstable one-epoch spike in early testing. Full run:
-`logs/train_final.log` (earlier superseded attempts kept as
+penalty (see the modality-collapse note above), trained on top of frozen
+DistilBERT text features (see the features note above). Checkpoint selection
+uses validation **weighted F1**, not macro F1 -- macro F1 alone picked an
+unstable one-epoch spike in early testing. Full run: `logs/train_final.log`
+(earlier superseded attempts, including the pre-DistilBERT version, kept as
 `logs/train_final_run*.log` for the record).
 
 | Model | Accuracy | Weighted F1 | Macro F1 |
 |---|---|---|---|
 | Baseline (text+audio BiLSTM, no fusion) | 59.12% | 55.28% | 31.27% |
-| Final adaptive tri-modal fusion | **58.35%** | **56.00%** | **32.87%** |
+| Final, original 600-D text features | 58.35% | 56.00% | 32.87% |
+| **Final, DistilBERT text features** | **61.69%** | **59.97%** | **38.29%** |
 
-This is the best accuracy and weighted F1 across every version tried,
-historical or current (see the Research journey table below) -- and unlike
-every earlier version, it comes with adaptive weights that actually vary by
-content instead of a collapsed shortcut. Macro F1 is slightly below the
-historical best (34.16%, V4) -- a reasonable trade-off: fixing modality
-collapse and chasing minority-class macro F1 pull in somewhat different
-directions, and this run prioritized the former since it's the project's
-core claim. Full per-class precision/recall/F1/support:
+Swapping the original 2018-era task-specific CNN text features for frozen
+DistilBERT embeddings (no other change) lifted every metric substantially:
++3.3 accuracy, +4.0 weighted F1, +5.4 macro F1. This is the best result
+across every version tried, historical or current (see Research journey),
+and it's the only one with both non-collapsed adaptive weights *and* a
+non-zero Fear F1. Full per-class precision/recall/F1/support:
 `logs/evaluate_final_output.log`. Confusion matrix:
 `evaluation/confusion_matrix_final.png`.
+
+**For context against published work:** recent (2024-2026) state-of-the-art
+multimodal systems on this exact MELD 7-class task report weighted F1 in the
+67-74% range (MCN-CL 73.1%, AMuSE ~74%, AM2-EmoJE 71.98%, TelME 67.37%) --
+but those fine-tune large pretrained transformers end-to-end on GPUs, often
+with graph neural networks or contrastive learning on top. This project's
+59.97% weighted F1 comes from frozen features (no fine-tuning) and a
+lightweight ~7.1M-parameter BiLSTM architecture trained entirely on a CPU
+laptop. The gap to SOTA is real and expected given that difference in scale,
+not a flaw in the fusion/context-modelling approach.
 
 ## Dataset
 
@@ -149,7 +170,8 @@ evaluation/
   metrics.py                    Shared metric helpers
   legacy/                      Archived old evaluation scripts (one had a dead import)
 modules/
-  data_loader.py                Loads the original MELD.Features.Models pickles
+  data_loader.py                Loads text (DistilBERT)/audio/label features
+  text_features_distilbert.py   One-off: extracts frozen DistilBERT text embeddings
   visual_features.py            ResNet-18 video feature extraction
   inference.py                  Shared checkpoint loading + forward pass (used by app + eval)
   ambiguity.py                  Modality agreement/disagreement scoring
@@ -174,6 +196,10 @@ Requires MELD raw video under `meld_dataset/raw/` and features under
 ## Running things
 
 ```bash
+# One-time: extract frozen DistilBERT text embeddings (downloads ~270MB
+# model weights on first run, then a few minutes of CPU inference)
+python modules/text_features_distilbert.py
+
 # Train the final model (~10-40 min on this hardware, no GPU -- varies with
 # when early stopping triggers)
 python training/train_final.py
@@ -206,7 +232,8 @@ python -m uvicorn app.backend.main:app --port 8000
 | V2 (adaptive fusion + context attention) | 57.28% | 56.22% | 33.78% | Architecture in this repo |
 | V3 (aggressive minority-class handling) | 51.88% | 53.47% | 34.34% | Forcing minority recall hurt overall accuracy |
 | V4 (V2 + moderate class weighting, gentle focal loss) | 57.36% | 56.32% | 34.16% | Best historical accuracy/weighted-F1, but weights still collapsed onto text (not measured at the time -- see below) |
-| **Final (this repo)** | **58.35%** | **56.00%** | 32.87% | V4's recipe + modality dropout + weight-cap penalty; best accuracy/weighted-F1 of any version, and the only one with genuinely adaptive (not collapsed) modality weights |
+| Final, original text features | 58.35% | 56.00% | 32.87% | V4's recipe + modality dropout + weight-cap penalty (fixes modality collapse) |
+| **Final, DistilBERT text features** | **61.69%** | **59.97%** | **38.29%** | Same as above + frozen DistilBERT text embeddings instead of the 2018 CNN features; best of every version on every metric, plus the only one with a non-zero Fear F1 |
 
 **On modality collapse specifically:** every historical version above
 (including V4) was never checked for this -- `evaluation/disagreement_analysis.py`
@@ -220,3 +247,31 @@ to have collapsed.
 Full per-class numbers, confusion matrices, and the modality-ablation /
 disagreement-analysis results are generated by the `evaluation/` scripts
 above rather than pasted here, so they can't go stale.
+
+## An honest note on what the ablation numbers actually show
+
+With DistilBERT text features, `text_only` (62.07% acc / 60.29% weighted F1)
+and `text+video` (61.92% / 60.31%) are essentially tied with -- and by a
+fraction of a point, sometimes edge out -- the full `text+audio+video`
+(61.69% / 59.97%) on these *aggregate* zero-ablation numbers. Read literally,
+that could suggest audio adds nothing. That's not the full picture:
+
+- The adaptive weight network still uses audio meaningfully and
+  *differently* depending on content -- e.g. it weights audio noticeably
+  higher for surprise (25.0%) than for sadness (20.7%), a sensible pattern
+  (vocal cues like gasps/pitch changes carry more surprise signal than
+  sadness signal). See `logs/disagreement_analysis_output.log`.
+- Zero-ablation (feeding a modality all zeros) is a coarse way to measure
+  "value" -- it tests whether the network can still function *without* a
+  modality, not how much that modality helps on the specific utterances
+  where it matters. Averaged across a mostly-text-decidable dataset, a
+  modality that meaningfully helps on a minority of hard utterances can
+  still show a near-zero or slightly negative aggregate delta.
+- The missing-modality robustness itself (the app's toggle, and this
+  ablation study existing at all) is part of the project's stated
+  contribution, independent of whether it nudges the headline accuracy
+  number up or down by a fraction of a point.
+
+Reporting this straight rather than only showing the number that looks best
+is more defensible in front of faculty than claiming tri-modal strictly
+dominates every single metric, which it does not.
