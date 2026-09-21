@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multimodal Emotion AI</title>
+<style>
+  :root {
+    --bg: #0f1220;
+    --panel: #171b2e;
+    --panel-2: #1f2440;
+    --border: #2c3154;
+    --text: #e8e9f3;
+    --muted: #9497b3;
+    --accent: #7c5cff;
+    --accent-2: #33d6b0;
+    --warn: #ffb454;
+    --danger: #ff6b81;
+    --text-c: #5aa9ff;
+    --audio-c: #ffb454;
+    --video-c: #33d6b0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: radial-gradient(1200px 600px at 20% -10%, #1c2140 0%, var(--bg) 60%);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px 60px;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 28px; }
+  header h1 {
+    font-size: 28px; margin: 0 0 6px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  header p { color: var(--muted); margin: 0; font-size: 14px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px;
+  }
+  .panel h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--muted); margin: 0 0 14px;
+  }
+  select, button {
+    font-family: inherit; font-size: 14px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
+    padding: 10px 12px; width: 100%;
+  }
+  select { margin-bottom: 12px; }
+  .utterance-list { max-height: 220px; overflow-y: auto; border: 1px solid var(--border); border-radius: 10px; }
+  .utt {
+    padding: 10px 12px; border-bottom: 1px solid var(--border);
+    cursor: pointer; display: flex; justify-content: space-between; gap: 8px; font-size: 13px;
+  }
+  .utt:last-child { border-bottom: none; }
+  .utt:hover { background: var(--panel-2); }
+  .utt.selected { background: rgba(124,92,255,0.18); border-left: 3px solid var(--accent); }
+  .utt .badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 999px;
+    background: var(--panel-2); color: var(--muted); white-space: nowrap;
+  }
+  video { width: 100%; border-radius: 10px; background: #000; margin: 14px 0; display: none; }
+  .toggles { display: flex; gap: 14px; margin: 14px 0; flex-wrap: wrap; }
+  .toggle { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+  .toggle input { accent-color: var(--accent); width: 16px; height: 16px; }
+  #analyzeBtn {
+    margin-top: 6px; background: linear-gradient(90deg, var(--accent), #5b3fd6);
+    border: none; font-weight: 600; cursor: pointer; letter-spacing: 0.03em;
+  }
+  #analyzeBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+  #analyzeBtn:hover:not(:disabled) { filter: brightness(1.1); }
+  .result-empty { color: var(--muted); font-size: 14px; text-align: center; padding: 40px 10px; }
+  .pred-head { text-align: center; margin-bottom: 18px; }
+  .pred-emoji { font-size: 46px; }
+  .pred-name { font-size: 24px; font-weight: 700; margin: 4px 0 2px; }
+  .pred-conf { color: var(--muted); font-size: 13px; }
+  .gt-note { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .gt-note.match { color: var(--accent-2); }
+  .gt-note.mismatch { color: var(--danger); }
+  .bar-row { display: grid; grid-template-columns: 60px 1fr 42px; align-items: center; gap: 8px; font-size: 12px; margin: 6px 0; }
+  .bar-track { height: 10px; background: var(--panel-2); border-radius: 6px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 6px; }
+  .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 18px 0 8px; }
+  .disagree-badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .disagree-LOW { background: rgba(51,214,176,0.15); color: var(--accent-2); }
+  .disagree-MEDIUM { background: rgba(255,180,84,0.15); color: var(--warn); }
+  .disagree-HIGH { background: rgba(255,107,129,0.15); color: var(--danger); }
+  .modality-preds { display: flex; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 6px; flex-wrap: wrap; }
+  .modality-preds span b { color: var(--text); }
+  .explanation { font-size: 13px; line-height: 1.5; color: var(--text); background: var(--panel-2); border-radius: 10px; padding: 12px 14px; margin-top: 8px; }
+  .footnote { font-size: 11px; color: var(--muted); text-align: center; margin-top: 30px; line-height: 1.6; }
+  #status { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>MULTIMODAL EMOTION AI</h1>
+    <p>Context-aware adaptive tri-modal fusion &mdash; text + audio + video, MELD dataset</p>
+  </header>
+
+  <div id="status">Loading model &amp; test examples&hellip;</div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>1. Pick a dialogue &amp; utterance</h2>
+      <select id="dialogueSelect"></select>
+      <div class="utterance-list" id="utteranceList"></div>
+
+      <video id="videoPlayer" controls></video>
+
+      <div class="section-title">Modalities to use</div>
+      <div class="toggles">
+        <label class="toggle"><input type="checkbox" id="useText" checked> Text</label>
+        <label class="toggle"><input type="checkbox" id="useAudio" checked> Audio</label>
+        <label class="toggle"><input type="checkbox" id="useVideo" checked> Video</label>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 10px;">
+        Uncheck a modality to see how the model copes with it missing &mdash; it re-runs a real forward pass with that input zeroed out.
+      </p>
+
+      <button id="analyzeBtn" disabled>ANALYZE</button>
+    </div>
+
+    <div class="panel" id="resultPanel">
+      <h2>2. Result</h2>
+      <div class="result-empty">Pick an utterance and click Analyze.</div>
+    </div>
+  </div>
+
+  <div class="footnote">
+    This demo runs real inference through the trained adaptive-fusion model on genuine MELD test-set utterances<br>
+    (the original text/audio feature extractors were never released, so arbitrary free-text/upload input can't be
+    mapped into the same feature space &mdash; see README).
+  </div>
+</div>
+
+<script>
+const API = "";
+const EMOJI = { neutral: "😐", surprise: "😲", fear: "😨", sadness: "😢", joy: "😄", disgust: "🤢", anger: "😠" };
+const EMOTIONS = ["neutral","surprise","fear","sadness","joy","disgust","anger"];
+const MOD_COLOR = { text: "var(--text-c)", audio: "var(--audio-c)", video: "var(--video-c)" };
+
+let examples = [];
+let currentDialogue = null;
+let currentUtteranceIndex = null;
+
+const statusEl = document.getElementById("status");
+const dialogueSelect = document.getElementById("dialogueSelect");
+const utteranceList = document.getElementById("utteranceList");
+const videoPlayer = document.getElementById("videoPlayer");
+const analyzeBtn = document.getElementById("analyzeBtn");
+const resultPanel = document.getElementById("resultPanel");
+
+async function init() {
+  try {
+    const health = await fetch(API + "/health").then(r => r.json());
+    examples = await fetch(API + "/examples").then(r => r.json());
+
+    dialogueSelect.innerHTML = examples.map(ex =>
+      `<option value="${ex.dialogue_index}">Dialogue ${ex.dialogue_id} (${ex.num_utterances} utterances)</option>`
+    ).join("");
+
+    statusEl.textContent = `Model ready on ${health.device} — checkpoint val accuracy ${(health.checkpoint_val_accuracy*100).toFixed(1)}%, ${examples.length} test dialogues loaded.`;
+
+    dialogueSelect.addEventListener("change", () => selectDialogue(parseInt(dialogueSelect.value)));
+    selectDialogue(0);
+  } catch (e) {
+    statusEl.textContent = "Could not reach the backend at " + API + " — is it running?";
+    console.error(e);
+  }
+}
+
+function selectDialogue(index) {
+  currentDialogue = examples[index];
+  currentUtteranceIndex = null;
+  dialogueSelect.value = index;
+
+  utteranceList.innerHTML = currentDialogue.labels.map((label, i) =>
+    `<div class="utt" data-i="${i}"><span>Utterance ${i}</span><span class="badge">${EMOJI[label]} ${label}</span></div>`
+  ).join("");
+
+  [...utteranceList.children].forEach(el => {
+    el.addEventListener("click", () => selectUtterance(parseInt(el.dataset.i)));
+  });
+
+  videoPlayer.style.display = "none";
+  analyzeBtn.disabled = true;
+  resultPanel.innerHTML = '<h2>2. Result</h2><div class="result-empty">Pick an utterance and click Analyze.</div>';
+}
+
+function selectUtterance(i) {
+  currentUtteranceIndex = i;
+  [...utteranceList.children].forEach(el => el.classList.toggle("selected", parseInt(el.dataset.i) === i));
+
+  const uttId = currentDialogue.utterance_ids[i];
+  videoPlayer.src = `${API}/video/${currentDialogue.dialogue_id}/${uttId}`;
+  videoPlayer.style.display = "block";
+
+  analyzeBtn.disabled = false;
+}
+
+function bar(label, value, color) {
+  const pct = Math.round(value * 100);
+  return `<div class="bar-row">
+    <span>${label}</span>
+    <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+    <span>${pct}%</span>
+  </div>`;
+}
+
+async function analyze() {
+  analyzeBtn.disabled = true;
+  analyzeBtn.textContent = "ANALYZING…";
+  resultPanel.innerHTML = '<h2>2. Result</h2><div class="result-empty">Running inference…</div>';
+
+  const payload = {
+    dialogue_index: currentDialogue.dialogue_index,
+    utterance_index: currentUtteranceIndex,
+    use_text: document.getElementById("useText").checked,
+    use_audio: document.getElementById("useAudio").checked,
+    use_video: document.getElementById("useVideo").checked,
+  };
+
+  try {
+    const res = await fetch(API + "/predict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    renderResult(data);
+  } catch (e) {
+    resultPanel.innerHTML = '<h2>2. Result</h2><div class="result-empty">Prediction failed. ' + e.message + '</div>';
+  } finally {
+    analyzeBtn.disabled = false;
+    analyzeBtn.textContent = "ANALYZE";
+  }
+}
+
+function renderResult(data) {
+  const match = data.predicted_emotion === data.ground_truth;
+  const probRows = EMOTIONS.map(e =>
+    bar(e, data.probabilities[e], e === data.predicted_emotion ? "var(--accent)" : "var(--border)")
+  ).join("");
+
+  const modalityRows =
+    bar("Text", data.modality_weights.text, MOD_COLOR.text) +
+    bar("Audio", data.modality_weights.audio, MOD_COLOR.audio) +
+    bar("Video", data.modality_weights.video, MOD_COLOR.video);
+
+  const modPreds = `<div class="modality-preds">
+    <span>Text alone: <b>${data.modality_predictions.text}</b></span>
+    <span>Audio alone: <b>${data.modality_predictions.audio}</b></span>
+    <span>Video alone: <b>${data.modality_predictions.video}</b></span>
+  </div>`;
+
+  resultPanel.innerHTML = `
+    <h2>2. Result</h2>
+    <div class="pred-head">
+      <div class="pred-emoji">${EMOJI[data.predicted_emotion]}</div>
+      <div class="pred-name">${data.predicted_emotion.toUpperCase()}</div>
+      <div class="pred-conf">${(data.confidence*100).toFixed(0)}% confidence</div>
+      <div class="gt-note ${match ? 'match' : 'mismatch'}">Ground truth: ${data.ground_truth} ${match ? '(match)' : '(different)'}</div>
+    </div>
+
+    <div class="section-title">Adaptive modality weights</div>
+    ${modalityRows}
+
+    <div class="section-title">Emotion probabilities</div>
+    ${probRows}
+
+    <div class="section-title">Modality agreement</div>
+    <span class="disagree-badge disagree-${data.disagreement_level}">${data.disagreement_level} disagreement</span>
+    ${modPreds}
+
+    <div class="section-title">Explanation</div>
+    <div class="explanation">${data.explanation}</div>
+  `;
+}
+
+analyzeBtn.addEventListener("click", analyze);
+init();
+</script>
+</body>
+</html>

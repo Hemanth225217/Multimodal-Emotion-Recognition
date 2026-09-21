@@ -1,8 +1,11 @@
 import sys
 from pathlib import Path
+import pickle
 
+import numpy as np
 import torch
 from torch.utils.data import Dataset
+
 
 # ============================================================
 # PROJECT ROOT
@@ -15,7 +18,19 @@ sys.path.insert(
     str(PROJECT_ROOT)
 )
 
+
 from modules.data_loader import load_features
+
+
+# ============================================================
+# PATHS
+# ============================================================
+
+VISUAL_ROOT = (
+    PROJECT_ROOT
+    / "meld_features"
+    / "visual"
+)
 
 
 # ============================================================
@@ -24,7 +39,7 @@ from modules.data_loader import load_features
 
 class MELDDataset(Dataset):
     """
-    Dataset for multimodal conversational emotion recognition.
+    Tri-modal MELD dataset.
 
     Each sample represents one complete MELD dialogue.
 
@@ -34,16 +49,25 @@ class MELDDataset(Dataset):
     Audio:
         [utterances, 300]
 
+    Video:
+        [utterances, 512]
+
     Labels:
         [utterances]
 
-    IMPORTANT:
-    The number of utterances is determined from the actual
-    MELD emotion records, NOT from the length of the feature
-    arrays.
+    Important:
+        The original MELD text/audio feature files contain
+        padding up to 33 utterances per dialogue.
 
-    This prevents padded/extra feature vectors from being
-    incorrectly treated as real utterances.
+        We therefore use the actual MELD emotion records to
+        determine which utterances are real.
+
+        Visual features are aligned using:
+            Dialogue_ID + Utterance_ID
+
+        Missing individual visual utterances are removed from
+        ALL modalities so that text/audio/video/labels remain
+        perfectly aligned.
     """
 
     def __init__(self, split="train"):
@@ -51,7 +75,7 @@ class MELDDataset(Dataset):
         super().__init__()
 
         # ====================================================
-        # LOAD RAW MELD FEATURES
+        # LOAD TEXT, AUDIO AND EMOTION DATA
         # ====================================================
 
         text_data, audio_data, emotion_data = load_features()
@@ -74,9 +98,55 @@ class MELDDataset(Dataset):
 
         self.split = split
 
-        self.split_index = split_index[
-            split
-        ]
+        self.split_index = split_index[split]
+
+        # ====================================================
+        # VISUAL FILE MAPPING
+        #
+        # Dataset calls validation "val".
+        # Visual extraction calls it "dev".
+        # ====================================================
+
+        visual_split = {
+            "train": "train",
+            "val": "dev",
+            "test": "test"
+        }[split]
+
+        visual_path = (
+            VISUAL_ROOT
+            / f"{visual_split}_visual.pkl"
+        )
+
+        if not visual_path.exists():
+
+            raise FileNotFoundError(
+                f"Visual feature file not found:\n"
+                f"{visual_path}"
+            )
+
+        with open(
+            visual_path,
+            "rb"
+        ) as f:
+
+            visual_data = pickle.load(f)
+
+        self.visual_features = visual_data["features"]
+
+        self.visual_missing = set(
+            visual_data.get(
+                "missing_videos",
+                []
+            )
+        )
+
+        self.visual_failed = set(
+            visual_data.get(
+                "failed_videos",
+                []
+            )
+        )
 
         # ====================================================
         # FEATURES FOR CURRENT SPLIT
@@ -95,12 +165,19 @@ class MELDDataset(Dataset):
         # ====================================================
 
         self.emotion_map = {
+
             "neutral": 0,
+
             "surprise": 1,
+
             "fear": 2,
+
             "sadness": 3,
+
             "joy": 4,
+
             "disgust": 5,
+
             "anger": 6
         }
 
@@ -143,6 +220,7 @@ class MELDDataset(Dataset):
         # 1. Text
         # 2. Audio
         # 3. Emotion labels
+        # 4. Visual features
         # ====================================================
 
         self.dialogue_ids = []
@@ -172,7 +250,7 @@ class MELDDataset(Dataset):
         )
 
         # ====================================================
-        # VERIFY ALIGNMENT
+        # ALIGNMENT STATISTICS
         # ====================================================
 
         self.total_utterances = 0
@@ -181,12 +259,26 @@ class MELDDataset(Dataset):
 
         self.truncated_dialogues = 0
 
+        self.missing_visual_utterances = 0
+
+        self.usable_dialogue_count = 0
+
+        # ====================================================
+        # VERIFY DIALOGUES
+        # ====================================================
+
         for dialogue_id in self.dialogue_ids:
 
+            label_dict = self.labels[
+                dialogue_id
+            ]
+
+            sorted_utterance_ids = sorted(
+                label_dict.keys()
+            )
+
             label_count = len(
-                self.labels[
-                    dialogue_id
-                ]
+                sorted_utterance_ids
             )
 
             text_count = len(
@@ -214,26 +306,55 @@ class MELDDataset(Dataset):
 
                 self.truncated_dialogues += 1
 
-            usable_count = min(
-                label_count,
-                feature_count
-            )
+            # ------------------------------------------------
+            # Check visual availability per utterance.
+            # ------------------------------------------------
 
-            self.total_utterances += (
-                usable_count
-            )
+            usable_count = 0
+
+            for position, utterance_id in enumerate(
+                sorted_utterance_ids
+            ):
+
+                if position >= feature_count:
+                    break
+
+                visual_key = (
+                    f"{dialogue_id}_{utterance_id}"
+                )
+
+                if visual_key in self.visual_features:
+
+                    usable_count += 1
+
+                else:
+
+                    self.missing_visual_utterances += 1
+
+            if usable_count > 0:
+
+                self.usable_dialogue_count += 1
+
+                self.total_utterances += usable_count
 
         # ====================================================
         # PRINT DATASET INFORMATION
         # ====================================================
 
+        print()
+        print("=" * 70)
         print(
-            f"{split.upper()} dataset: "
-            f"{len(self.dialogue_ids)} dialogues"
+            f"{split.upper()} TRI-MODAL DATASET"
+        )
+        print("=" * 70)
+
+        print(
+            f"{split.upper()} dialogues: "
+            f"{len(self.dialogue_ids)}"
         )
 
         print(
-            f"{split.upper()} actual utterances: "
+            f"{split.upper()} usable utterances: "
             f"{self.total_utterances}"
         )
 
@@ -251,6 +372,22 @@ class MELDDataset(Dataset):
             f"{split.upper()} dialogues with insufficient features: "
             f"{self.missing_feature_dialogues}"
         )
+
+        print(
+            f"{split.upper()} missing visual utterances: "
+            f"{self.missing_visual_utterances}"
+        )
+
+        print(
+            f"{split.upper()} visual features loaded: "
+            f"{len(self.visual_features)}"
+        )
+
+        print(
+            f"{split.upper()} visual feature dimension: 512"
+        )
+
+        print("=" * 70)
 
     # ========================================================
     # LENGTH
@@ -273,7 +410,7 @@ class MELDDataset(Dataset):
         ]
 
         # ====================================================
-        # GET FEATURES
+        # GET RAW FEATURES
         # ====================================================
 
         text = self.text_data[
@@ -284,77 +421,102 @@ class MELDDataset(Dataset):
             dialogue_id
         ]
 
-        # ====================================================
-        # CONVERT TO TENSORS
-        # ====================================================
-
-        text = torch.tensor(
-            text,
-            dtype=torch.float32
-        )
-
-        audio = torch.tensor(
-            audio,
-            dtype=torch.float32
-        )
-
-        # ====================================================
-        # GET ACTUAL LABELS
-        # ====================================================
-
         label_dict = self.labels[
             dialogue_id
         ]
 
-        # ----------------------------------------------------
-        # Sort labels according to utterance ID
-        # ----------------------------------------------------
+        # ====================================================
+        # SORT ACTUAL UTTERANCE IDS
+        # ====================================================
 
         sorted_utterance_ids = sorted(
             label_dict.keys()
         )
 
-        # Number of actual labeled utterances
         label_count = len(
             sorted_utterance_ids
         )
 
-        # Number of available feature vectors
+        # ====================================================
+        # NUMBER OF AVAILABLE TEXT/AUDIO FEATURES
+        # ====================================================
+
         feature_count = min(
             len(text),
             len(audio)
         )
 
-        # ----------------------------------------------------
-        # IMPORTANT:
-        #
-        # Use only the number of ACTUAL MELD utterances.
-        #
-        # Never create missing labels as Neutral.
-        # ----------------------------------------------------
-
-        num_utterances = min(
-            label_count,
-            feature_count
-        )
-
-        text = text[
-            :num_utterances
-        ]
-
-        audio = audio[
-            :num_utterances
-        ]
-
         # ====================================================
-        # CREATE LABEL TENSOR
+        # BUILD ALIGNED TRI-MODAL ARRAYS
         # ====================================================
 
-        labels = []
+        aligned_text = []
 
-        for utterance_id in sorted_utterance_ids[
-            :num_utterances
-        ]:
+        aligned_audio = []
+
+        aligned_video = []
+
+        aligned_labels = []
+
+        aligned_utterance_ids = []
+
+        for position, utterance_id in enumerate(
+            sorted_utterance_ids
+        ):
+
+            # ------------------------------------------------
+            # Never exceed available text/audio features.
+            # ------------------------------------------------
+
+            if position >= feature_count:
+                break
+
+            # ------------------------------------------------
+            # Visual feature key.
+            # ------------------------------------------------
+
+            visual_key = (
+                f"{dialogue_id}_{utterance_id}"
+            )
+
+            # ------------------------------------------------
+            # If visual feature is unavailable, skip the
+            # SAME utterance from every modality.
+            # ------------------------------------------------
+
+            if visual_key not in self.visual_features:
+
+                continue
+
+            # ------------------------------------------------
+            # Text
+            # ------------------------------------------------
+
+            aligned_text.append(
+                text[position]
+            )
+
+            # ------------------------------------------------
+            # Audio
+            # ------------------------------------------------
+
+            aligned_audio.append(
+                audio[position]
+            )
+
+            # ------------------------------------------------
+            # Video
+            # ------------------------------------------------
+
+            aligned_video.append(
+                self.visual_features[
+                    visual_key
+                ]
+            )
+
+            # ------------------------------------------------
+            # Label
+            # ------------------------------------------------
 
             emotion = label_dict[
                 utterance_id
@@ -368,36 +530,75 @@ class MELDDataset(Dataset):
                     f"utterance {utterance_id}"
                 )
 
-            labels.append(
+            aligned_labels.append(
                 self.emotion_map[
                     emotion
                 ]
             )
 
+            aligned_utterance_ids.append(
+                utterance_id
+            )
+
+        # ====================================================
+        # CONVERT TO TENSORS
+        # ====================================================
+
+        if len(aligned_text) == 0:
+
+            raise RuntimeError(
+                f"No usable tri-modal utterances "
+                f"in dialogue {dialogue_id}"
+            )
+
+        text = torch.tensor(
+            np.array(aligned_text),
+            dtype=torch.float32
+        )
+
+        audio = torch.tensor(
+            np.array(aligned_audio),
+            dtype=torch.float32
+        )
+
+        video = torch.tensor(
+            np.array(aligned_video),
+            dtype=torch.float32
+        )
+
         labels = torch.tensor(
-            labels,
+            aligned_labels,
             dtype=torch.long
         )
 
         # ====================================================
-        # FINAL SAFETY CHECK
+        # FINAL SAFETY CHECKS
         # ====================================================
+
+        if len(text) != len(audio):
+
+            raise RuntimeError(
+                f"Text/audio alignment error in "
+                f"dialogue {dialogue_id}: "
+                f"text={len(text)}, "
+                f"audio={len(audio)}"
+            )
+
+        if len(text) != len(video):
+
+            raise RuntimeError(
+                f"Text/video alignment error in "
+                f"dialogue {dialogue_id}: "
+                f"text={len(text)}, "
+                f"video={len(video)}"
+            )
 
         if len(text) != len(labels):
 
             raise RuntimeError(
-                f"Alignment error in dialogue "
-                f"{dialogue_id}: "
+                f"Text/label alignment error in "
+                f"dialogue {dialogue_id}: "
                 f"text={len(text)}, "
-                f"labels={len(labels)}"
-            )
-
-        if len(audio) != len(labels):
-
-            raise RuntimeError(
-                f"Alignment error in dialogue "
-                f"{dialogue_id}: "
-                f"audio={len(audio)}, "
                 f"labels={len(labels)}"
             )
 
@@ -406,11 +607,20 @@ class MELDDataset(Dataset):
         # ====================================================
 
         return {
+
             "dialogue_id": dialogue_id,
+
             "text": text,
+
             "audio": audio,
+
+            "video": video,
+
             "labels": labels,
-            "length": num_utterances
+
+            "utterance_ids": aligned_utterance_ids,
+
+            "length": len(labels)
         }
 
 
@@ -422,8 +632,12 @@ if __name__ == "__main__":
 
     print()
     print("=" * 70)
-    print("TESTING CORRECTED MELD DATASET")
+    print("TESTING TRI-MODAL MELD DATASET")
     print("=" * 70)
+
+    # --------------------------------------------------------
+    # TRAIN
+    # --------------------------------------------------------
 
     print()
 
@@ -431,11 +645,19 @@ if __name__ == "__main__":
         "train"
     )
 
+    # --------------------------------------------------------
+    # VALIDATION
+    # --------------------------------------------------------
+
     print()
 
     val_dataset = MELDDataset(
         "val"
     )
+
+    # --------------------------------------------------------
+    # TEST
+    # --------------------------------------------------------
 
     print()
 
@@ -449,7 +671,7 @@ if __name__ == "__main__":
 
     print()
     print("=" * 70)
-    print("DATASET SUMMARY")
+    print("TRI-MODAL DATASET SUMMARY")
     print("=" * 70)
 
     print(
@@ -509,6 +731,11 @@ if __name__ == "__main__":
     )
 
     print(
+        f"Video shape : "
+        f"{sample['video'].shape}"
+    )
+
+    print(
         f"Labels shape: "
         f"{sample['labels'].shape}"
     )
@@ -519,11 +746,16 @@ if __name__ == "__main__":
     )
 
     print(
+        f"Utterance IDs: "
+        f"{sample['utterance_ids']}"
+    )
+
+    print(
         f"Labels      : "
         f"{sample['labels'].tolist()}"
     )
 
     print()
     print("=" * 70)
-    print("DATASET TEST COMPLETE")
+    print("TRI-MODAL DATASET TEST COMPLETE")
     print("=" * 70)

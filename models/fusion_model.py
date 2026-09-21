@@ -8,15 +8,18 @@ class MultimodalFusionModel(nn.Module):
         self,
         text_dim=600,
         audio_dim=300,
+        video_dim=512,
         hidden_dim=256,
         num_classes=7
     ):
 
         super().__init__()
 
-        # ------------------------------------------
-        # Text encoder
-        # ------------------------------------------
+        self.hidden_dim = hidden_dim
+
+        # ============================================================
+        # TEXT ENCODER
+        # ============================================================
 
         self.text_encoder = nn.LSTM(
             input_size=text_dim,
@@ -25,9 +28,20 @@ class MultimodalFusionModel(nn.Module):
             bidirectional=True
         )
 
-        # ------------------------------------------
-        # Audio encoder
-        # ------------------------------------------
+        self.text_projection = nn.Sequential(
+            nn.Linear(
+                hidden_dim * 2,
+                hidden_dim
+            ),
+            nn.LayerNorm(
+                hidden_dim
+            ),
+            nn.ReLU()
+        )
+
+        # ============================================================
+        # AUDIO ENCODER
+        # ============================================================
 
         self.audio_encoder = nn.LSTM(
             input_size=audio_dim,
@@ -36,104 +50,491 @@ class MultimodalFusionModel(nn.Module):
             bidirectional=True
         )
 
-        # Because the LSTMs are bidirectional:
-        #
-        # hidden_dim = 256
-        # forward  = 256
-        # backward = 256
-        #
-        # total = 512
-        #
-        # Text = 512
-        # Audio = 512
-        # Combined = 1024
+        self.audio_projection = nn.Sequential(
+            nn.Linear(
+                hidden_dim * 2,
+                hidden_dim
+            ),
+            nn.LayerNorm(
+                hidden_dim
+            ),
+            nn.ReLU()
+        )
 
-        # ------------------------------------------
-        # Fusion layer
-        # ------------------------------------------
+        # ============================================================
+        # VIDEO ENCODER
+        # ============================================================
 
-        self.fusion = nn.Sequential(
+        self.video_encoder = nn.LSTM(
+            input_size=video_dim,
+            hidden_size=hidden_dim,
+            batch_first=True,
+            bidirectional=True
+        )
+
+        self.video_projection = nn.Sequential(
+            nn.Linear(
+                hidden_dim * 2,
+                hidden_dim
+            ),
+            nn.LayerNorm(
+                hidden_dim
+            ),
+            nn.ReLU()
+        )
+
+        # ============================================================
+        # MODALITY NORMALIZATION
+        # ============================================================
+
+        self.text_norm = nn.LayerNorm(
+            hidden_dim
+        )
+
+        self.audio_norm = nn.LayerNorm(
+            hidden_dim
+        )
+
+        self.video_norm = nn.LayerNorm(
+            hidden_dim
+        )
+
+        # ============================================================
+        # TEXT -> AUDIO CROSS-MODAL ATTENTION
+        # ============================================================
+
+        self.text_audio_attention = nn.MultiheadAttention(
+            embed_dim=hidden_dim,
+            num_heads=4,
+            dropout=0.1,
+            batch_first=True
+        )
+
+        self.text_audio_norm = nn.LayerNorm(
+            hidden_dim
+        )
+
+        # ============================================================
+        # TEXT -> VIDEO CROSS-MODAL ATTENTION
+        # ============================================================
+
+        self.text_video_attention = nn.MultiheadAttention(
+            embed_dim=hidden_dim,
+            num_heads=4,
+            dropout=0.1,
+            batch_first=True
+        )
+
+        self.text_video_norm = nn.LayerNorm(
+            hidden_dim
+        )
+
+        # ============================================================
+        # ADAPTIVE MODALITY WEIGHTING
+        #
+        # Instead of applying the same gate to all modalities,
+        # this module predicts THREE independent modality weights:
+        #
+        #   Text
+        #   Audio
+        #   Video
+        #
+        # The weights are normalized using Softmax.
+        #
+        # Example:
+        #
+        #   Text  = 0.65
+        #   Audio = 0.20
+        #   Video = 0.15
+        #
+        # The weights are learned separately for every utterance.
+        # ============================================================
+
+        self.modality_weight_network = nn.Sequential(
 
             nn.Linear(
-                hidden_dim * 4,
-                256
+                hidden_dim * 3,
+                128
+            ),
+
+            nn.LayerNorm(
+                128
             ),
 
             nn.ReLU(),
 
-            nn.Dropout(0.3)
+            nn.Dropout(0.2),
+
+            nn.Linear(
+                128,
+                3
+            )
         )
 
-        # ------------------------------------------
-        # Emotion classifier
-        # ------------------------------------------
+        # ============================================================
+        # ADAPTIVE FUSION
+        #
+        # We keep all three modalities after weighting rather than
+        # collapsing them into one vector.
+        #
+        # Weighted Text  : 256
+        # Weighted Audio : 256
+        # Weighted Video : 256
+        #
+        # Total           : 768
+        # ============================================================
 
-        self.classifier = nn.Linear(
-            256,
-            num_classes
+        self.fusion = nn.Sequential(
+
+            nn.Linear(
+                hidden_dim * 3,
+                hidden_dim * 2
+            ),
+
+            nn.LayerNorm(
+                hidden_dim * 2
+            ),
+
+            nn.ReLU(),
+
+            nn.Dropout(0.25),
+
+            nn.Linear(
+                hidden_dim * 2,
+                hidden_dim
+            ),
+
+            nn.LayerNorm(
+                hidden_dim
+            ),
+
+            nn.ReLU(),
+
+            nn.Dropout(0.25)
         )
 
-    def forward(self, text, audio):
-
-        # ------------------------------------------
-        # Text features
-        # ------------------------------------------
-
-        text_output, _ = self.text_encoder(text)
-
-        # IMPORTANT:
-        # Keep ALL utterances.
+        # ============================================================
+        # FUSION RESIDUAL PROJECTION
         #
-        # Shape:
-        # [batch, utterances, 512]
+        # Provides a stable residual path from the weighted modalities.
+        # ============================================================
 
-        text_feature = text_output
+        self.fusion_residual = nn.Linear(
+            hidden_dim * 3,
+            hidden_dim
+        )
 
-        # ------------------------------------------
-        # Audio features
-        # ------------------------------------------
+        self.fusion_residual_norm = nn.LayerNorm(
+            hidden_dim
+        )
 
-        audio_output, _ = self.audio_encoder(audio)
-
-        # IMPORTANT:
-        # Keep ALL utterances.
+        # ============================================================
+        # DIALOGUE CONTEXT ATTENTION
         #
-        # Shape:
-        # [batch, utterances, 512]
+        # Each utterance can attend to other utterances in the
+        # same dialogue.
+        # ============================================================
 
-        audio_feature = audio_output
+        self.context_attention = nn.MultiheadAttention(
+            embed_dim=hidden_dim,
+            num_heads=4,
+            dropout=0.1,
+            batch_first=True
+        )
 
-        # ------------------------------------------
-        # Combine text + audio
-        # ------------------------------------------
+        self.context_norm = nn.LayerNorm(
+            hidden_dim
+        )
 
-        combined = torch.cat(
+        # ============================================================
+        # CONTEXT FEED-FORWARD NETWORK
+        # ============================================================
+
+        self.context_ffn = nn.Sequential(
+
+            nn.Linear(
+                hidden_dim,
+                hidden_dim * 2
+            ),
+
+            nn.ReLU(),
+
+            nn.Dropout(0.2),
+
+            nn.Linear(
+                hidden_dim * 2,
+                hidden_dim
+            )
+        )
+
+        self.context_ffn_norm = nn.LayerNorm(
+            hidden_dim
+        )
+
+        # ============================================================
+        # FINAL CLASSIFIER
+        # ============================================================
+
+        self.classifier = nn.Sequential(
+
+            nn.Linear(
+                hidden_dim,
+                128
+            ),
+
+            nn.LayerNorm(
+                128
+            ),
+
+            nn.ReLU(),
+
+            nn.Dropout(0.3),
+
+            nn.Linear(
+                128,
+                num_classes
+            )
+        )
+
+    # =================================================================
+    # FORWARD
+    # =================================================================
+
+    def forward(
+        self,
+        text,
+        audio,
+        video,
+        return_weights=False
+    ):
+
+        # ============================================================
+        # TEXT ENCODING
+        # ============================================================
+
+        text_output, _ = self.text_encoder(
+            text
+        )
+
+        text_feature = self.text_projection(
+            text_output
+        )
+
+        text_feature = self.text_norm(
+            text_feature
+        )
+
+        # ============================================================
+        # AUDIO ENCODING
+        # ============================================================
+
+        audio_output, _ = self.audio_encoder(
+            audio
+        )
+
+        audio_feature = self.audio_projection(
+            audio_output
+        )
+
+        audio_feature = self.audio_norm(
+            audio_feature
+        )
+
+        # ============================================================
+        # VIDEO ENCODING
+        # ============================================================
+
+        video_output, _ = self.video_encoder(
+            video
+        )
+
+        video_feature = self.video_projection(
+            video_output
+        )
+
+        video_feature = self.video_norm(
+            video_feature
+        )
+
+        # ============================================================
+        # TEXT <-> AUDIO CROSS-MODAL ATTENTION
+        # ============================================================
+
+        text_audio_feature, _ = self.text_audio_attention(
+            query=text_feature,
+            key=audio_feature,
+            value=audio_feature
+        )
+
+        text_feature = self.text_audio_norm(
+            text_feature + text_audio_feature
+        )
+
+        # ============================================================
+        # TEXT <-> VIDEO CROSS-MODAL ATTENTION
+        # ============================================================
+
+        text_video_feature, _ = self.text_video_attention(
+            query=text_feature,
+            key=video_feature,
+            value=video_feature
+        )
+
+        text_feature = self.text_video_norm(
+            text_feature + text_video_feature
+        )
+
+        # ============================================================
+        # COMBINE MODALITIES FOR WEIGHT PREDICTION
+        # ============================================================
+
+        modality_context = torch.cat(
             (
                 text_feature,
-                audio_feature
+                audio_feature,
+                video_feature
             ),
-            dim=2
+            dim=-1
         )
 
+        # ============================================================
+        # LEARN THREE SEPARATE MODALITY WEIGHTS
+        # ============================================================
+
+        modality_scores = self.modality_weight_network(
+            modality_context
+        )
+
+        modality_weights = torch.softmax(
+            modality_scores,
+            dim=-1
+        )
+
+        # ============================================================
+        # EXTRACT INDIVIDUAL MODALITY WEIGHTS
+        #
         # Shape:
-        # [batch, utterances, 1024]
+        # [batch, utterances, 1]
+        # ============================================================
 
-        # ------------------------------------------
-        # Fusion
-        # ------------------------------------------
+        text_weight = modality_weights[
+            :, :, 0:1
+        ]
 
-        fused = self.fusion(combined)
+        audio_weight = modality_weights[
+            :, :, 1:2
+        ]
 
-        # Shape:
-        # [batch, utterances, 256]
+        video_weight = modality_weights[
+            :, :, 2:3
+        ]
 
-        # ------------------------------------------
-        # Emotion prediction
-        # ------------------------------------------
+        # ============================================================
+        # APPLY ADAPTIVE MODALITY WEIGHTS
+        # ============================================================
 
-        output = self.classifier(fused)
+        weighted_text = (
+            text_feature
+            * text_weight
+        )
 
-        # Shape:
+        weighted_audio = (
+            audio_feature
+            * audio_weight
+        )
+
+        weighted_video = (
+            video_feature
+            * video_weight
+        )
+
+        # ============================================================
+        # WEIGHTED MULTIMODAL REPRESENTATION
+        # ============================================================
+
+        weighted_modalities = torch.cat(
+            (
+                weighted_text,
+                weighted_audio,
+                weighted_video
+            ),
+            dim=-1
+        )
+
+        # ============================================================
+        # MAIN FUSION PATH
+        # ============================================================
+
+        fused = self.fusion(
+            weighted_modalities
+        )
+
+        # ============================================================
+        # RESIDUAL FUSION PATH
+        # ============================================================
+
+        residual = self.fusion_residual(
+            weighted_modalities
+        )
+
+        residual = self.fusion_residual_norm(
+            residual
+        )
+
+        # ============================================================
+        # COMBINE MAIN + RESIDUAL FUSION
+        # ============================================================
+
+        fused = fused + residual
+
+        # ============================================================
+        # DIALOGUE CONTEXT ATTENTION
+        # ============================================================
+
+        context_output, _ = self.context_attention(
+            query=fused,
+            key=fused,
+            value=fused
+        )
+
+        fused = self.context_norm(
+            fused + context_output
+        )
+
+        # ============================================================
+        # CONTEXT FEED-FORWARD NETWORK
+        # ============================================================
+
+        context_refined = self.context_ffn(
+            fused
+        )
+
+        fused = self.context_ffn_norm(
+            fused + context_refined
+        )
+
+        # ============================================================
+        # FINAL EMOTION CLASSIFICATION
+        # ============================================================
+
+        output = self.classifier(
+            fused
+        )
+
+        # ============================================================
+        # OUTPUT
+        #
         # [batch, utterances, 7]
+        # ============================================================
+
+        if return_weights:
+
+            # [batch, utterances, 3] -> (text, audio, video)
+            modality_weights_out = torch.cat(
+                (text_weight, audio_weight, video_weight),
+                dim=-1
+            )
+
+            return output, modality_weights_out
 
         return output
