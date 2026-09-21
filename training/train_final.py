@@ -5,17 +5,36 @@ reference under training/legacy/) with one self-contained run: random init,
 the adaptive fusion architecture, moderate class weighting, gentle focal
 loss, and modality dropout.
 
-Modality dropout is the important addition: an earlier run of this script
-(without it) converged to average adaptive weights of text=0.998,
-audio=0.001, video=0.001 -- the model found text was the easiest signal and
-had no incentive to ever learn from audio/video ("modality collapse", a
-known failure mode in multimodal training). Randomly zeroing one modality
-per training step forces the fusion to actually solve the task from
-audio/video alone often enough that those encoders -- and the adaptive
-weight network's ability to react to them -- get real gradient signal.
+Two additions target modality collapse, a known failure mode where a
+multimodal model learns to lean on whichever signal is easiest (here, text)
+and never bothers with the others. An earlier run without either fix
+converged to average adaptive weights of text=0.998, audio=0.001,
+video=0.001 for every emotion:
+
+  1. Modality dropout (zero one modality per training step) forces the
+     model to solve the task from audio/video alone often enough that those
+     encoders get real gradient signal. This alone was NOT enough -- a
+     follow-up run with only this fix still converged to ~99.9% text weight,
+     because dropout only teaches the model to cope when a modality is
+     completely absent; it does nothing to the "all three genuinely present"
+     regime, which is 100% of eval-time behaviour and 60% of training.
+  2. A weight-cap penalty on the modality-weight network's output: any
+     modality weight above MAX_MODALITY_WEIGHT is penalized, in every
+     regime, not just the dropout-forced ones. An entropy bonus (maximize
+     -sum(w*log(w))) was tried first and rejected: at every weight tried
+     (0.02, 0.15) it eventually pushed weights toward *exactly*
+     text=audio=video=0.333 for every single emotion, because uniform
+     trivially maximizes entropy regardless of content -- not adaptive,
+     just a different degenerate solution. A hinge-style cap has no such
+     shortcut: the penalty is zero for any distribution that keeps every
+     weight under the cap (a wide space including plenty of non-uniform,
+     content-dependent options), so satisfying it doesn't require ignoring
+     the input the way maximizing entropy does.
+
 Produces models/final_model.pt.
 """
 
+import math
 import random
 import sys
 import time
@@ -39,6 +58,13 @@ FOCAL_GAMMA = 1.0
 EARLY_STOP_PATIENCE = 6
 LR_PATIENCE = 2
 GRAD_CLIP_NORM = 1.0
+
+# Hinge penalty: any modality weight above MAX_MODALITY_WEIGHT is punished,
+# added to the loss with strength CAP_PENALTY_WEIGHT. Zero penalty for any
+# distribution that already keeps every weight under the cap -- unlike
+# maximizing entropy, satisfying this doesn't require ignoring the input.
+MAX_MODALITY_WEIGHT = 0.60
+CAP_PENALTY_WEIGHT = 1.0
 
 # Modality dropout: at most one modality zeroed per training step. Text is
 # dropped most often since it's the modality the model was collapsing onto;
@@ -127,11 +153,29 @@ def apply_modality_dropout(text, audio, video):
     return text, audio, video
 
 
+def modality_weight_entropy(modality_weights, eps=1e-8):
+    """Mean Shannon entropy of the per-utterance 3-way modality weights.
+
+    Diagnostic only (not part of the loss): max is ln(3)=1.099 (uniform
+    text/audio/video), near 0 means collapsed onto a single modality. Useful
+    for watching training, but NOT used as the regularizer -- see
+    modality_weight_cap_penalty and the module docstring for why.
+    """
+    return -(modality_weights * torch.log(modality_weights + eps)).sum(dim=-1).mean()
+
+
+def modality_weight_cap_penalty(modality_weights, max_weight=MAX_MODALITY_WEIGHT):
+    """Hinge penalty: cost only for the part of any weight above max_weight."""
+    excess = (modality_weights - max_weight).clamp(min=0)
+    return excess.sum(dim=-1).mean()
+
+
 def run_epoch(model, loader, criterion, optimizer=None):
     train_mode = optimizer is not None
     model.train(train_mode)
 
     total_loss = 0.0
+    total_entropy = 0.0
     all_preds, all_labels = [], []
 
     with torch.set_grad_enabled(train_mode):
@@ -141,9 +185,14 @@ def run_epoch(model, loader, criterion, optimizer=None):
             if train_mode:
                 text, audio, video = apply_modality_dropout(text, audio, video)
 
-            logits = model(text, audio, video).reshape(-1, NUM_CLASSES)
+            logits, modality_weights = model(text, audio, video, return_weights=True)
+            logits = logits.reshape(-1, NUM_CLASSES)
             labels = labels.reshape(-1)
-            loss = criterion(logits, labels)
+
+            classification_loss = criterion(logits, labels)
+            entropy = modality_weight_entropy(modality_weights)  # diagnostic only
+            cap_penalty = modality_weight_cap_penalty(modality_weights)
+            loss = classification_loss + CAP_PENALTY_WEIGHT * cap_penalty
 
             if train_mode:
                 optimizer.zero_grad(set_to_none=True)
@@ -151,16 +200,22 @@ def run_epoch(model, loader, criterion, optimizer=None):
                 torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP_NORM)
                 optimizer.step()
 
-            total_loss += loss.item()
+            total_loss += classification_loss.item()
+            total_entropy += entropy.item()
             all_preds.extend(torch.argmax(logits, dim=1).detach().cpu().tolist())
             all_labels.extend(labels.detach().cpu().tolist())
 
             if train_mode and step % 200 == 0:
                 running_acc = accuracy_score(all_labels, all_preds)
-                print(f"  step {step}/{len(loader)}  loss={loss.item():.4f}  running_acc={running_acc:.4f}")
+                print(
+                    f"  step {step}/{len(loader)}  loss={classification_loss.item():.4f}  "
+                    f"capPenalty={cap_penalty.item():.4f}  entropy={entropy.item():.4f}  "
+                    f"running_acc={running_acc:.4f}"
+                )
 
     metrics = {
         "loss": total_loss / max(len(loader), 1),
+        "entropy": total_entropy / max(len(loader), 1),
         "accuracy": accuracy_score(all_labels, all_preds),
         "macro_f1": f1_score(all_labels, all_preds, average="macro", zero_division=0),
         "weighted_f1": f1_score(all_labels, all_preds, average="weighted", zero_division=0),
@@ -176,6 +231,7 @@ def main():
         f"Modality dropout: text={TEXT_DROPOUT_PROB:.0%} audio={AUDIO_DROPOUT_PROB:.0%} "
         f"video={VIDEO_DROPOUT_PROB:.0%} (per training step, at most one dropped)"
     )
+    print(f"Modality-weight cap: penalty {CAP_PENALTY_WEIGHT}x for any weight above {MAX_MODALITY_WEIGHT:.0%}")
     print("=" * 70)
 
     train_dataset = MELDDataset(split="train")
@@ -219,7 +275,8 @@ def main():
         epoch_time = time.time() - epoch_start
         print(
             f"train: loss={train_metrics['loss']:.4f} acc={train_metrics['accuracy']:.4f} "
-            f"macroF1={train_metrics['macro_f1']:.4f} weightedF1={train_metrics['weighted_f1']:.4f}"
+            f"macroF1={train_metrics['macro_f1']:.4f} weightedF1={train_metrics['weighted_f1']:.4f} "
+            f"weightEntropy={train_metrics['entropy']:.4f}/{math.log(3):.4f}"
         )
         print(
             f"val:   loss={val_metrics['loss']:.4f} acc={val_metrics['accuracy']:.4f} "
@@ -250,12 +307,18 @@ def main():
                         "weight_decay": WEIGHT_DECAY,
                         "focal_gamma": FOCAL_GAMMA,
                         "seed": SEED,
-                        "strategy": "single-stage adaptive fusion, moderate class weighting, gentle focal loss, modality dropout",
+                        "strategy": (
+                            "single-stage adaptive fusion, moderate class weighting, gentle focal loss, "
+                            "modality dropout, modality-weight cap penalty"
+                        ),
                         "modality_dropout": {
                             "text": TEXT_DROPOUT_PROB,
                             "audio": AUDIO_DROPOUT_PROB,
                             "video": VIDEO_DROPOUT_PROB,
                         },
+                        "max_modality_weight": MAX_MODALITY_WEIGHT,
+                        "cap_penalty_weight": CAP_PENALTY_WEIGHT,
+                        "val_modality_weight_entropy": val_metrics["entropy"],
                     },
                 },
                 FINAL_MODEL_PATH,

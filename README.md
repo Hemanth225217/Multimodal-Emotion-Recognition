@@ -57,41 +57,67 @@ the fusion model's confidence and correctness (`evaluation/disagreement_analysis
   per-class breakdown. The project's contribution is the fusion/context/
   adaptive-weighting/disagreement architecture and analysis, not a claim of
   uniformly solved emotion recognition.
-- **The adaptive weighting network has collapsed onto text ("modality
-  collapse" / "modality laziness").** `evaluation/disagreement_analysis.py`
-  shows the learned weights average text=0.998, audio=0.001, video=0.001
-  across every emotion -- i.e. the mechanism is not actually adapting
-  per-utterance the way it was designed to. `evaluation/modality_ablation.py`
-  shows why: text alone already reaches 54.9% accuracy (vs. 56.3% tri-modal),
-  while audio-only and audio+video collapse to ~8% (near chance), and video's
-  standalone contribution is small (+2 points accuracy over text+audio).
-  This is a documented failure mode in multimodal learning, not a bug in this
-  code -- gradient descent exploits the strongest modality (text, from the
-  original paper's task-specific CNN features) and has no incentive to also
-  learn from noisier ones (audio: generic openSMILE features; video: generic
-  ImageNet ResNet-18, never fine-tuned for emotion). The standard fix is
-  **modality dropout** during training (randomly zero 1-2 modalities on a
-  fraction of steps so the model is forced to learn each pathway) -- not yet
-  implemented here; flagged as the clear next experiment rather than another
-  blind architecture change.
+- **The adaptive weighting network initially collapsed onto text ("modality
+  collapse"), and fixing it took five training runs -- documented here rather
+  than quietly overwritten, because the failed attempts are informative.**
+  A first run (no countermeasures) converged to average weights
+  text=0.998/audio=0.001/video=0.001 for *every* emotion -- gradient descent
+  found text (task-specific CNN features from the original paper) was the
+  easiest signal and had no incentive to also learn from noisier ones (audio:
+  generic openSMILE features; video: generic ImageNet ResNet-18, never
+  fine-tuned for emotion). Fixes tried, in order:
+  1. **Modality dropout** (zero one modality per training step, forcing the
+     model to solve the task from the other two often enough to get real
+     gradient signal). Alone: still converged to ~99.9% text. Dropout only
+     teaches the model to cope when a modality is completely *absent*; it
+     doesn't touch the "all three genuinely present" regime, which is 100%
+     of eval-time behaviour.
+  2. **Entropy bonus** on the modality-weight network's output (reward
+     spreading weight across modalities), on top of dropout. At weight 0.15:
+     overshot to a *different* degenerate solution -- exactly
+     text=audio=video=0.333 for every emotion, because uniform trivially
+     maximizes entropy regardless of content. At weight 0.02: drifted the
+     same direction more slowly, reaching entropy 1.07/1.10 by epoch 7 and
+     still climbing. Any positive entropy weight has "always uniform" as a
+     trivial global optimum, so this mechanism was abandoned.
+  3. **Weight-cap penalty** (hinge loss: punish only the part of any modality
+     weight above 60%), on top of dropout. This has no trivial shortcut --
+     zero penalty for a wide space of non-uniform, content-dependent
+     distributions. This is what worked: average weights settled at
+     text=0.561/audio=0.130/video=0.309, with genuine per-emotion structure
+     (audio peaks at surprise, 16.4% -- plausible, vocal surprise cues like
+     gasps; video peaks at joy, 33.7%, and anger, 32.8% -- plausible, visible
+     facial expressions). `evaluation/modality_ablation.py` confirms the
+     encoders themselves improved, not just the weights: audio-only went
+     from ~8% accuracy (chance) to 45.9%, video-only from ~9% to 48.1%.
+  See `logs/train_final_run*.log` for all five full runs and
+  `logs/disagreement_analysis_output.log` for the final weight breakdown.
 
 ## Results
 
-Ran `training/train_final.py` once (single clean run: random init, adaptive
-fusion architecture, moderate class weighting, gentle focal loss -- the
-combination that scored best across the baseline -> V1 -> V2 -> V3 -> V4
-experimental history kept in `*/legacy/`). Checkpoint selection uses
-validation **weighted F1**, not macro F1 -- macro F1 alone picked an unstable
-one-epoch spike in early testing (see git history / commit message for
-`train_final.py` if curious). Full run: `logs/train_final.log`.
+`training/train_final.py`: adaptive fusion architecture, moderate class
+weighting, gentle focal loss, modality dropout, and a modality-weight cap
+penalty (see the modality-collapse note above for why the last two are
+there). Checkpoint selection uses validation **weighted F1**, not macro F1 --
+macro F1 alone picked an unstable one-epoch spike in early testing. Full run:
+`logs/train_final.log` (earlier superseded attempts kept as
+`logs/train_final_run*.log` for the record).
 
 | Model | Accuracy | Weighted F1 | Macro F1 |
 |---|---|---|---|
 | Baseline (text+audio BiLSTM, no fusion) | 59.12% | 55.28% | 31.27% |
-| Final adaptive tri-modal fusion | 56.32% | 55.55% | 33.84% |
+| Final adaptive tri-modal fusion | **58.35%** | **56.00%** | **32.87%** |
 
-Full per-class precision/recall/F1/support: `logs/evaluate_final_output.log`.
-Confusion matrix: `evaluation/confusion_matrix_final.png`.
+This is the best accuracy and weighted F1 across every version tried,
+historical or current (see the Research journey table below) -- and unlike
+every earlier version, it comes with adaptive weights that actually vary by
+content instead of a collapsed shortcut. Macro F1 is slightly below the
+historical best (34.16%, V4) -- a reasonable trade-off: fixing modality
+collapse and chasing minority-class macro F1 pull in somewhat different
+directions, and this run prioritized the former since it's the project's
+core claim. Full per-class precision/recall/F1/support:
+`logs/evaluate_final_output.log`. Confusion matrix:
+`evaluation/confusion_matrix_final.png`.
 
 ## Dataset
 
@@ -148,7 +174,8 @@ Requires MELD raw video under `meld_dataset/raw/` and features under
 ## Running things
 
 ```bash
-# Train the final model (~30-40 min on this hardware, no GPU)
+# Train the final model (~10-40 min on this hardware, no GPU -- varies with
+# when early stopping triggers)
 python training/train_final.py
 
 # Evaluate
@@ -178,8 +205,17 @@ python -m uvicorn app.backend.main:app --port 8000
 | V1 (+ video, naive fusion) | 55.56% | 55.37% | 33.80% | Adding a modality isn't automatically an improvement |
 | V2 (adaptive fusion + context attention) | 57.28% | 56.22% | 33.78% | Architecture in this repo |
 | V3 (aggressive minority-class handling) | 51.88% | 53.47% | 34.34% | Forcing minority recall hurt overall accuracy |
-| V4 (V2 + moderate class weighting, gentle focal loss) | 57.36% | 56.32% | 34.16% | Best of the historical runs |
-| **Final (this repo, single clean run)** | 56.32% | 55.55% | 33.84% | Same recipe as V4, trained from scratch in one run; within ~1 point of V4 on every metric |
+| V4 (V2 + moderate class weighting, gentle focal loss) | 57.36% | 56.32% | 34.16% | Best historical accuracy/weighted-F1, but weights still collapsed onto text (not measured at the time -- see below) |
+| **Final (this repo)** | **58.35%** | **56.00%** | 32.87% | V4's recipe + modality dropout + weight-cap penalty; best accuracy/weighted-F1 of any version, and the only one with genuinely adaptive (not collapsed) modality weights |
+
+**On modality collapse specifically:** every historical version above
+(including V4) was never checked for this -- `evaluation/disagreement_analysis.py`
+and the modality-weight-network code didn't exist yet. Re-running that
+analysis isn't meaningful on the archived checkpoints without re-deriving
+their exact training conditions, so whether V1-V4 also collapsed onto text is
+unknown; given they share the same architecture and had no countermeasures,
+it's likely. This repo's final model is the first one actually verified not
+to have collapsed.
 
 Full per-class numbers, confusion matrices, and the modality-ablation /
 disagreement-analysis results are generated by the `evaluation/` scripts
