@@ -107,38 +107,56 @@ the fusion model's confidence and correctness (`evaluation/disagreement_analysis
 ## Results
 
 `training/train_final.py`: adaptive fusion architecture, moderate class
-weighting, gentle focal loss, modality dropout, and a modality-weight cap
-penalty (see the modality-collapse note above), trained on top of frozen
-DistilBERT text features (see the features note above). Checkpoint selection
-uses validation **weighted F1**, not macro F1 -- macro F1 alone picked an
-unstable one-epoch spike in early testing. Full run: `logs/train_final.log`
-(earlier superseded attempts, including the pre-DistilBERT version, kept as
-`logs/train_final_run*.log` for the record).
+weighting, gentle focal loss, adaptive modality dropout, a modality-weight
+cap penalty, and auxiliary unimodal losses (see the modality-collapse note
+above for the dropout/cap history), trained on frozen DistilBERT text
+features. Checkpoint selection uses validation **weighted F1**, not macro F1.
+Full run: `logs/train_final.log` (all superseded attempts kept as
+`logs/train_final_run*.log` for the record -- eight full runs in total).
 
 | Model | Accuracy | Weighted F1 | Macro F1 |
 |---|---|---|---|
 | Baseline (text+audio BiLSTM, no fusion) | 59.12% | 55.28% | 31.27% |
 | Final, original 600-D text features | 58.35% | 56.00% | 32.87% |
-| **Final, DistilBERT text features** | **61.69%** | **59.97%** | **38.29%** |
+| Final, DistilBERT text features | 61.69% | 59.97% | 38.29% |
+| **Final, + auxiliary unimodal losses + adaptive dropout** | 61.23% | **60.43%** | **41.44%** |
 
-Swapping the original 2018-era task-specific CNN text features for frozen
-DistilBERT embeddings (no other change) lifted every metric substantially:
-+3.3 accuracy, +4.0 weighted F1, +5.4 macro F1. This is the best result
-across every version tried, historical or current (see Research journey),
-and it's the only one with both non-collapsed adaptive weights *and* a
-non-zero Fear F1. Full per-class precision/recall/F1/support:
-`logs/evaluate_final_output.log`. Confusion matrix:
-`evaluation/confusion_matrix_final.png`.
+The last row is the current model. Accuracy dipped very slightly (-0.46) but
+weighted F1 and macro F1 both improved, and per-class results tell the more
+important story: **this is the first version in the project's history --
+baseline, V1-V4, or any of the eight runs done tonight -- where all seven
+emotion classes score a non-zero F1.** Disgust (0.0 in literally every prior
+version) reached 0.125; Fear improved from 0.092 to 0.121. Full per-class
+precision/recall/F1/support: `logs/evaluate_final_output.log`. Confusion
+matrix: `evaluation/confusion_matrix_final.png`.
 
-**For context against published work:** recent (2024-2026) state-of-the-art
-multimodal systems on this exact MELD 7-class task report weighted F1 in the
-67-74% range (MCN-CL 73.1%, AMuSE ~74%, AM2-EmoJE 71.98%, TelME 67.37%) --
-but those fine-tune large pretrained transformers end-to-end on GPUs, often
-with graph neural networks or contrastive learning on top. This project's
-59.97% weighted F1 comes from frozen features (no fine-tuning) and a
-lightweight ~7.1M-parameter BiLSTM architecture trained entirely on a CPU
-laptop. The gap to SOTA is real and expected given that difference in scale,
-not a flaw in the fusion/context-modelling approach.
+**Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
+most recent closely-related paper found (adaptive per-modality dropout based
+on relative performance, differential graph attention, auxiliary unimodal
+losses) and the explicit target for this iteration. Its reported MELD
+numbers: 66.07% accuracy / 66.18% weighted F1 (IEMOCAP: 76.09%/75.64%).
+
+**Honest verdict: we do not beat it.** Current model is 61.23%/60.43%, about
+5-6 points behind on both metrics. Two of our changes tonight were adapted
+directly from AMB-DSGDN's method (auxiliary unimodal losses, and dropout
+probability driven by relative modality performance instead of fixed
+constants) and both measurably helped -- best macro F1 and best per-class
+completeness of any version -- but didn't close the full gap. The remaining
+difference is architectural: AMB-DSGDN uses RoBERTa (1024-D, larger than our
+DistilBERT's 768-D) and a differential graph attention network over explicit
+intra-/inter-speaker subgraphs; we use BiLSTM + cross-attention with no
+speaker modeling at all. Adding speaker-aware modeling is the most likely
+remaining lever, not yet implemented (see the honest-novelty discussion for
+why this is still a legitimate, if incomplete, contribution).
+
+**For broader context:** other 2024-2026 systems on this task report
+weighted F1 in the 66-74% range (MCN-CL 73.1%, AMuSE ~74%, AM2-EmoJE 71.98%,
+TelME 67.37%, AMB-DSGDN 66.18%) -- all fine-tune large pretrained
+transformers end-to-end on GPUs, several with graph networks or contrastive
+learning. This project's 60.43% weighted F1 comes from frozen features (no
+fine-tuning) and a lightweight ~7.1M-parameter architecture trained entirely
+on a CPU laptop -- a real, expected gap given that difference in scale, not
+a flaw in the fusion/context-modelling approach itself.
 
 ## Dataset
 
@@ -233,7 +251,8 @@ python -m uvicorn app.backend.main:app --port 8000
 | V3 (aggressive minority-class handling) | 51.88% | 53.47% | 34.34% | Forcing minority recall hurt overall accuracy |
 | V4 (V2 + moderate class weighting, gentle focal loss) | 57.36% | 56.32% | 34.16% | Best historical accuracy/weighted-F1, but weights still collapsed onto text (not measured at the time -- see below) |
 | Final, original text features | 58.35% | 56.00% | 32.87% | V4's recipe + modality dropout + weight-cap penalty (fixes modality collapse) |
-| **Final, DistilBERT text features** | **61.69%** | **59.97%** | **38.29%** | Same as above + frozen DistilBERT text embeddings instead of the 2018 CNN features; best of every version on every metric, plus the only one with a non-zero Fear F1 |
+| Final, DistilBERT text features | 61.69% | 59.97% | 38.29% | Same as above + frozen DistilBERT text embeddings instead of the 2018 CNN features |
+| **Final, + auxiliary unimodal losses + adaptive dropout** | 61.23% | **60.43%** | **41.44%** | Same as above + two ideas adapted from AMB-DSGDN (2026); first version with a non-zero F1 on all seven classes (Disgust: 0.0 -> 0.125) |
 
 **On modality collapse specifically:** every historical version above
 (including V4) was never checked for this -- `evaluation/disagreement_analysis.py`
@@ -250,17 +269,19 @@ above rather than pasted here, so they can't go stale.
 
 ## An honest note on what the ablation numbers actually show
 
-With DistilBERT text features, `text_only` (62.07% acc / 60.29% weighted F1)
-and `text+video` (61.92% / 60.31%) are essentially tied with -- and by a
-fraction of a point, sometimes edge out -- the full `text+audio+video`
-(61.69% / 59.97%) on these *aggregate* zero-ablation numbers. Read literally,
-that could suggest audio adds nothing. That's not the full picture:
+`text_only` (60.50% acc / 59.84% weighted F1) and `text+audio` (61.26% /
+60.50%) land within about a point of the full `text+audio+video` (61.23% /
+60.43%) on these *aggregate* zero-ablation numbers. Read literally, that
+could suggest video adds little on its own. That's not the full picture:
 
-- The adaptive weight network still uses audio meaningfully and
-  *differently* depending on content -- e.g. it weights audio noticeably
-  higher for surprise (25.0%) than for sadness (20.7%), a sensible pattern
-  (vocal cues like gasps/pitch changes carry more surprise signal than
-  sadness signal). See `logs/disagreement_analysis_output.log`.
+- The adaptive weight network uses audio and video meaningfully and
+  *differently* depending on content -- e.g. video is weighted highest for
+  joy (27.4%) and lowest for sadness (21.1%), a sensible pattern (visible
+  facial expression carries more signal for joy than for sadness); audio
+  peaks for surprise (28.2%). See `logs/disagreement_analysis_output.log`.
+  Text/audio/video now average 50.6%/25.2%/24.1% -- audio and video are
+  nearly equal contributors, up from a near-total text monopoly before the
+  modality-collapse fix.
 - Zero-ablation (feeding a modality all zeros) is a coarse way to measure
   "value" -- it tests whether the network can still function *without* a
   modality, not how much that modality helps on the specific utterances

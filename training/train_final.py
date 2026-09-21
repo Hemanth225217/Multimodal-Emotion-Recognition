@@ -31,6 +31,21 @@ video=0.001 for every emotion:
      content-dependent options), so satisfying it doesn't require ignoring
      the input the way maximizing entropy does.
 
+This version adds two more ideas, both directly inspired by AMB-DSGDN
+(2026, arXiv 2603.10043) after reading its full method rather than just an
+abstract:
+  3. Auxiliary unimodal losses: each modality's own pre-fusion
+     representation gets its own small classifier, trained with its own
+     cross-entropy loss alongside the main fused prediction. Gives each
+     encoder direct supervision instead of only ever being judged through
+     the fused output.
+  4. Adaptive (not fixed) modality dropout: AMB-DSGDN computes a per-modality
+     dropout probability from that modality's relative performance each
+     batch. We adapt the same idea at epoch granularity using the auxiliary
+     heads' accuracy as the performance signal -- whichever modality is
+     currently strongest gets dropped more, the weakest less -- rather than
+     the fixed 40/15/15 split used in the previous version.
+
 Produces models/final_model.pt.
 """
 
@@ -66,15 +81,20 @@ GRAD_CLIP_NORM = 1.0
 MAX_MODALITY_WEIGHT = 0.60
 CAP_PENALTY_WEIGHT = 1.0
 
-# Modality dropout: at most one modality zeroed per training step. Text is
-# dropped most often since it's the modality the model was collapsing onto;
-# audio/video are dropped less often since they're already comparatively
-# under-used and don't need extra suppression. The remaining probability
-# (1 - sum) keeps all three modalities intact, so the model still learns the
-# genuine tri-modal joint case most of the time.
-TEXT_DROPOUT_PROB = 0.40
-AUDIO_DROPOUT_PROB = 0.15
-VIDEO_DROPOUT_PROB = 0.15
+# Modality dropout: at most one modality zeroed per training step. Starts
+# at this fixed split (text dropped most, matching what the previous
+# version found necessary) since epoch 1 has no real performance signal
+# yet; from epoch 2 on, update_dropout_probs() below adapts these based on
+# each modality's actual auxiliary-head accuracy that epoch.
+INITIAL_DROPOUT_PROBS = {"text": 0.40, "audio": 0.15, "video": 0.15}
+BASE_DROPOUT_PROB = 0.15
+DROPOUT_SCALE = 0.50
+MIN_DROPOUT_PROB = 0.05
+MAX_DROPOUT_PROB = 0.55
+DROPOUT_EMA_DECAY = 0.6  # smooths updates against the previous epoch's probs
+
+# Weight on the summed auxiliary unimodal losses (added to the main loss).
+AUX_LOSS_WEIGHT = 0.3
 
 NEUTRAL, SURPRISE, FEAR, SADNESS, JOY, DISGUST, ANGER = range(7)
 
@@ -141,16 +161,36 @@ def unpack_batch(batch):
     return text, audio, video, labels
 
 
-def apply_modality_dropout(text, audio, video):
+def apply_modality_dropout(text, audio, video, probs):
     """Zero out at most one modality this step (see module docstring)."""
     roll = random.random()
-    if roll < TEXT_DROPOUT_PROB:
+    if roll < probs["text"]:
         text = torch.zeros_like(text)
-    elif roll < TEXT_DROPOUT_PROB + AUDIO_DROPOUT_PROB:
+    elif roll < probs["text"] + probs["audio"]:
         audio = torch.zeros_like(audio)
-    elif roll < TEXT_DROPOUT_PROB + AUDIO_DROPOUT_PROB + VIDEO_DROPOUT_PROB:
+    elif roll < probs["text"] + probs["audio"] + probs["video"]:
         video = torch.zeros_like(video)
     return text, audio, video
+
+
+def update_dropout_probs(current_probs, epoch_aux_accuracy):
+    """Recompute per-modality dropout probabilities from this epoch's
+    auxiliary-head accuracy (AMB-DSGDN's idea, adapted to epoch
+    granularity): whichever modality is relatively strongest gets dropped
+    more, the weakest less, instead of a fixed split.
+    """
+    mean_acc = sum(epoch_aux_accuracy.values()) / len(epoch_aux_accuracy)
+
+    target_probs = {}
+    for modality, acc in epoch_aux_accuracy.items():
+        relative = (acc - mean_acc) / (mean_acc + 1e-8)
+        prob = BASE_DROPOUT_PROB + DROPOUT_SCALE * max(relative, 0.0)
+        target_probs[modality] = min(max(prob, MIN_DROPOUT_PROB), MAX_DROPOUT_PROB)
+
+    return {
+        m: DROPOUT_EMA_DECAY * current_probs[m] + (1 - DROPOUT_EMA_DECAY) * target_probs[m]
+        for m in epoch_aux_accuracy
+    }
 
 
 def modality_weight_entropy(modality_weights, eps=1e-8):
@@ -170,29 +210,38 @@ def modality_weight_cap_penalty(modality_weights, max_weight=MAX_MODALITY_WEIGHT
     return excess.sum(dim=-1).mean()
 
 
-def run_epoch(model, loader, criterion, optimizer=None):
+def run_epoch(model, loader, criterion, optimizer=None, dropout_probs=None):
     train_mode = optimizer is not None
     model.train(train_mode)
 
     total_loss = 0.0
     total_entropy = 0.0
     all_preds, all_labels = [], []
+    aux_preds = {"text": [], "audio": [], "video": []}
 
     with torch.set_grad_enabled(train_mode):
         for step, batch in enumerate(loader, start=1):
             text, audio, video, labels = unpack_batch(batch)
 
             if train_mode:
-                text, audio, video = apply_modality_dropout(text, audio, video)
+                text, audio, video = apply_modality_dropout(text, audio, video, dropout_probs)
 
-            logits, modality_weights = model(text, audio, video, return_weights=True)
+            logits, modality_weights, aux_logits = model(text, audio, video, return_aux=True)
             logits = logits.reshape(-1, NUM_CLASSES)
             labels = labels.reshape(-1)
 
             classification_loss = criterion(logits, labels)
             entropy = modality_weight_entropy(modality_weights)  # diagnostic only
             cap_penalty = modality_weight_cap_penalty(modality_weights)
-            loss = classification_loss + CAP_PENALTY_WEIGHT * cap_penalty
+
+            aux_loss = 0.0
+            for modality, modality_logits in aux_logits.items():
+                modality_logits = modality_logits.reshape(-1, NUM_CLASSES)
+                aux_loss = aux_loss + nn.functional.cross_entropy(modality_logits, labels)
+                aux_preds[modality].extend(torch.argmax(modality_logits, dim=1).detach().cpu().tolist())
+            aux_loss = aux_loss / len(aux_logits)
+
+            loss = classification_loss + CAP_PENALTY_WEIGHT * cap_penalty + AUX_LOSS_WEIGHT * aux_loss
 
             if train_mode:
                 optimizer.zero_grad(set_to_none=True)
@@ -209,9 +258,14 @@ def run_epoch(model, loader, criterion, optimizer=None):
                 running_acc = accuracy_score(all_labels, all_preds)
                 print(
                     f"  step {step}/{len(loader)}  loss={classification_loss.item():.4f}  "
-                    f"capPenalty={cap_penalty.item():.4f}  entropy={entropy.item():.4f}  "
-                    f"running_acc={running_acc:.4f}"
+                    f"auxLoss={aux_loss.item():.4f}  capPenalty={cap_penalty.item():.4f}  "
+                    f"entropy={entropy.item():.4f}  running_acc={running_acc:.4f}"
                 )
+
+    aux_accuracy = {
+        modality: accuracy_score(all_labels, preds) if preds else 0.0
+        for modality, preds in aux_preds.items()
+    }
 
     metrics = {
         "loss": total_loss / max(len(loader), 1),
@@ -219,6 +273,7 @@ def run_epoch(model, loader, criterion, optimizer=None):
         "accuracy": accuracy_score(all_labels, all_preds),
         "macro_f1": f1_score(all_labels, all_preds, average="macro", zero_division=0),
         "weighted_f1": f1_score(all_labels, all_preds, average="weighted", zero_division=0),
+        "aux_accuracy": aux_accuracy,
     }
     return metrics, all_labels, all_preds
 
@@ -228,10 +283,12 @@ def main():
     print("FINAL MODEL TRAINING - adaptive tri-modal fusion")
     print(f"Device: {DEVICE}   Text={TEXT_DIM}D Audio={AUDIO_DIM}D Video={VIDEO_DIM}D -> {NUM_CLASSES} emotions")
     print(
-        f"Modality dropout: text={TEXT_DROPOUT_PROB:.0%} audio={AUDIO_DROPOUT_PROB:.0%} "
-        f"video={VIDEO_DROPOUT_PROB:.0%} (per training step, at most one dropped)"
+        f"Modality dropout: starts text={INITIAL_DROPOUT_PROBS['text']:.0%} "
+        f"audio={INITIAL_DROPOUT_PROBS['audio']:.0%} video={INITIAL_DROPOUT_PROBS['video']:.0%}, "
+        f"then adapts each epoch from auxiliary-head accuracy"
     )
     print(f"Modality-weight cap: penalty {CAP_PENALTY_WEIGHT}x for any weight above {MAX_MODALITY_WEIGHT:.0%}")
+    print(f"Auxiliary unimodal loss weight: {AUX_LOSS_WEIGHT}")
     print("=" * 70)
 
     train_dataset = MELDDataset(split="train")
@@ -263,21 +320,31 @@ def main():
     best_epoch = 0
     patience_counter = 0
     start_time = time.time()
+    dropout_probs = dict(INITIAL_DROPOUT_PROBS)
 
     for epoch in range(1, EPOCHS + 1):
         epoch_start = time.time()
         print(f"\n{'=' * 70}\nEPOCH {epoch}/{EPOCHS}  (lr={optimizer.param_groups[0]['lr']:.6f})\n{'=' * 70}")
+        print(
+            "dropout probs: "
+            + ", ".join(f"{m}={p:.0%}" for m, p in dropout_probs.items())
+        )
 
-        train_metrics, _, _ = run_epoch(model, train_loader, criterion, optimizer)
+        probs_used_this_epoch = dict(dropout_probs)
+        train_metrics, _, _ = run_epoch(model, train_loader, criterion, optimizer, dropout_probs)
         val_metrics, val_labels, val_preds = run_epoch(model, val_loader, criterion)
         scheduler.step(val_metrics["weighted_f1"])
 
+        dropout_probs = update_dropout_probs(dropout_probs, train_metrics["aux_accuracy"])
+
         epoch_time = time.time() - epoch_start
+        aux_acc_str = ", ".join(f"{m}={a:.4f}" for m, a in train_metrics["aux_accuracy"].items())
         print(
             f"train: loss={train_metrics['loss']:.4f} acc={train_metrics['accuracy']:.4f} "
             f"macroF1={train_metrics['macro_f1']:.4f} weightedF1={train_metrics['weighted_f1']:.4f} "
             f"weightEntropy={train_metrics['entropy']:.4f}/{math.log(3):.4f}"
         )
+        print(f"train aux accuracy: {aux_acc_str}")
         print(
             f"val:   loss={val_metrics['loss']:.4f} acc={val_metrics['accuracy']:.4f} "
             f"macroF1={val_metrics['macro_f1']:.4f} weightedF1={val_metrics['weighted_f1']:.4f}  "
@@ -309,15 +376,13 @@ def main():
                         "seed": SEED,
                         "strategy": (
                             "single-stage adaptive fusion, moderate class weighting, gentle focal loss, "
-                            "modality dropout, modality-weight cap penalty"
+                            "adaptive modality dropout, modality-weight cap penalty, auxiliary unimodal losses"
                         ),
-                        "modality_dropout": {
-                            "text": TEXT_DROPOUT_PROB,
-                            "audio": AUDIO_DROPOUT_PROB,
-                            "video": VIDEO_DROPOUT_PROB,
-                        },
+                        "modality_dropout_probs_this_epoch": probs_used_this_epoch,
                         "max_modality_weight": MAX_MODALITY_WEIGHT,
                         "cap_penalty_weight": CAP_PENALTY_WEIGHT,
+                        "aux_loss_weight": AUX_LOSS_WEIGHT,
+                        "train_aux_accuracy": train_metrics["aux_accuracy"],
                         "val_modality_weight_entropy": val_metrics["entropy"],
                     },
                 },

@@ -272,6 +272,23 @@ class MultimodalFusionModel(nn.Module):
         )
 
         # ============================================================
+        # AUXILIARY UNIMODAL CLASSIFIERS
+        #
+        # Each modality's own (pre-fusion) representation gets its own
+        # classification head, trained with its own loss alongside the
+        # main fused prediction (see training/train_final.py). This gives
+        # each encoder a direct supervised signal instead of only ever
+        # being judged through the fused output -- one more angle of
+        # attack on modality collapse, on top of dropout and the weight
+        # cap, following the same principle AMB-DSGDN (2026) uses.
+        # Inference-only use of the model can ignore these entirely.
+        # ============================================================
+
+        self.text_aux_classifier = nn.Linear(hidden_dim, num_classes)
+        self.audio_aux_classifier = nn.Linear(hidden_dim, num_classes)
+        self.video_aux_classifier = nn.Linear(hidden_dim, num_classes)
+
+        # ============================================================
         # FINAL CLASSIFIER
         # ============================================================
 
@@ -305,7 +322,8 @@ class MultimodalFusionModel(nn.Module):
         text,
         audio,
         video,
-        return_weights=False
+        return_weights=False,
+        return_aux=False
     ):
 
         # ============================================================
@@ -355,6 +373,10 @@ class MultimodalFusionModel(nn.Module):
         video_feature = self.video_norm(
             video_feature
         )
+
+        # Saved before cross-attention mixes text with audio/video below,
+        # so the auxiliary text head is judged on text alone.
+        text_feature_pure = text_feature
 
         # ============================================================
         # TEXT <-> AUDIO CROSS-MODAL ATTENTION
@@ -526,6 +548,21 @@ class MultimodalFusionModel(nn.Module):
         #
         # [batch, utterances, 7]
         # ============================================================
+
+        if return_aux:
+
+            modality_weights_out = torch.cat(
+                (text_weight, audio_weight, video_weight),
+                dim=-1
+            )
+
+            aux_logits = {
+                "text": self.text_aux_classifier(text_feature_pure),
+                "audio": self.audio_aux_classifier(audio_feature),
+                "video": self.video_aux_classifier(video_feature),
+            }
+
+            return output, modality_weights_out, aux_logits
 
         if return_weights:
 
