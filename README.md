@@ -122,10 +122,11 @@ included).
 | Final, DistilBERT text features | 61.69% | 59.97% | 38.29% |
 | Final, + auxiliary unimodal losses + adaptive dropout | 61.23% | 60.43% | 41.44% |
 | Final, + RoBERTa-base text features | 60.96% | 60.68% | **43.51%** |
-| **Final, + dialogue-relative speaker embeddings** | **62.45%** | **61.50%** | 42.74% |
+| Final, + dialogue-relative speaker embeddings | 62.45% | 61.50% | 42.74% |
 | ~~+ speaker-relational attn bias + sentiment loss~~ | ~~61.57%~~ | ~~60.23%~~ | ~~38.41%~~ |
 | ~~+ speaker-relational attn bias alone~~ | ~~60.77%~~ | ~~59.84%~~ | ~~37.97%~~ |
 | ~~+ sentiment auxiliary loss alone (bias off)~~ | ~~61.95%~~ | ~~60.13%~~ | ~~41.30%~~ |
+| **Ensemble: RoBERTa (no speaker) + RoBERTa+speaker, avg softmax** | **63.18%** | **62.45%** | **45.38%** |
 
 The bolded row is the current model. Speaker-aware modeling is the first
 change this session to move accuracy meaningfully (+1.49 points) rather than
@@ -171,9 +172,22 @@ improving overall. Under this project's own selection rule (weighted F1),
 that's a net loss, so it's reverted too (`logs/train_final_run13_sentiment_
 alone_60.13wf1.log`). Deadline is 3-7 days out and the priority is model
 numbers, so rather than a fourth attempt in this same area (classifier/
-attention-level tweaks), the plan is now the higher-ceiling, not-yet-tried
-levers: finishing the Wav2Vec2 audio upgrade (built, never run) and cheap
-ensembling of already-trained checkpoints.
+attention-level tweaks), the plan moved to higher-ceiling, not-yet-tried
+levers: ensembling and finishing the Wav2Vec2 audio upgrade.
+
+**Ensembling worked, cleanly, on the first try.** `evaluation/ensemble_test.py`
+averages the softmax probabilities of two already-trained checkpoints that
+share the same RoBERTa text features (no retraining needed): the
+RoBERTa-only checkpoint from before speaker embeddings existed, and the
+current best (with speaker embeddings). Result: **63.18% accuracy / 62.45%
+weighted F1 / 45.38% macro F1 -- a new best on all three metrics**, and
+every one of the 7 classes stayed non-zero (Fear 0.260 and Disgust 0.143 are
+each the best or near-best of any version this session). Full report:
+`logs/ensemble_test_output.log`. This is the first technique this session
+to genuinely beat the previous best without trading one metric for another.
+Not yet wired into the demo app (`app/backend/main.py` still serves the
+single speaker-embedding checkpoint) -- the ensemble is currently a
+reporting-time technique, run offline via the script above.
 
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
@@ -181,14 +195,16 @@ on relative performance, differential graph attention, auxiliary unimodal
 losses) and the explicit target for this phase of work. Its reported MELD
 numbers: 66.07% accuracy / 66.18% weighted F1 (IEMOCAP: 76.09%/75.64%).
 
-**Honest verdict: we still do not beat it.** Best validated model remains
-62.45% accuracy / 61.50% weighted F1 -- 3.62 / 4.68 points behind
-respectively, down from ~5 points behind two versions ago. Four changes
-adapted from AMB-DSGDN's method have helped so far (auxiliary unimodal
-losses, adaptive dropout, the RoBERTa text upgrade, dialogue-relative speaker
-embeddings); the speaker-relational attention bias, tested twice, did not.
-Not every idea inspired by a stronger paper transfers cleanly, and reporting
-the failures is as much part of the record as the successes.
+**Honest verdict: we still do not beat it, but this is the closest yet.**
+Best validated result is now the 2-checkpoint ensemble: 63.18% accuracy /
+62.45% weighted F1 -- **2.89 / 3.73 points behind** respectively, down from
+~5 points behind at the start of this session. Four single-model changes
+adapted from AMB-DSGDN's method helped (auxiliary unimodal losses, adaptive
+dropout, the RoBERTa text upgrade, dialogue-relative speaker embeddings);
+the speaker-relational attention bias and sentiment loss, tested three ways,
+did not; ensembling, a technique AMB-DSGDN's paper doesn't use, did. Not
+every idea inspired by a stronger paper transfers cleanly, and reporting the
+failures is as much part of the record as the successes.
 
 **For broader context:** other 2024-2026 systems on this task report
 weighted F1 in the 66-74% range (MCN-CL 73.1%, AMuSE ~74%, AM2-EmoJE 71.98%,
@@ -294,7 +310,7 @@ python -m uvicorn app.backend.main:app --port 8000
 | Final, DistilBERT text features | 61.69% | 59.97% | 38.29% | Same as above + frozen DistilBERT text embeddings instead of the 2018 CNN features |
 | Final, + auxiliary unimodal losses + adaptive dropout | 61.23% | 60.43% | 41.44% | Same as above + two ideas adapted from AMB-DSGDN (2026); first version with a non-zero F1 on all seven classes (Disgust: 0.0 -> 0.125) |
 | Final, + RoBERTa-base text features | 60.96% | 60.68% | 43.51% | Stronger frozen text encoder, in the spirit of AMB-DSGDN's RoBERTa-large; best macro F1 and per-class balance yet, small accuracy trade-off |
-| **Final, + dialogue-relative speaker embeddings** | **62.45%** | **61.50%** | 42.74% | First change to move accuracy meaningfully rather than trade it off; cost some macro F1 (Disgust F1 0.144 -> 0.050, low-support class) |
+| Final, + dialogue-relative speaker embeddings | 62.45% | 61.50% | 42.74% | First change to move accuracy meaningfully rather than trade it off; cost some macro F1 (Disgust F1 0.144 -> 0.050, low-support class) |
 
 **On modality collapse specifically:** every historical version above
 (including V4) was never checked for this -- `evaluation/disagreement_analysis.py`
