@@ -233,6 +233,17 @@ different random seeds of the same one -- exactly what the seed-43/44
 failures already suggested before this confirmed it. Full report:
 `logs/ensemble_test_output.log`.
 
+**Per-member temperature calibration (`evaluation/calibrated_ensemble_test.py`),
+tried on top of B+seed43+DistilBERT: also didn't help.** Fit a temperature
+per member on the validation set (never the test set, to avoid overfitting
+a calibration knob to the reported numbers) -- B=1.1, seed43=1.1,
+DistilBERT=1.25, all mild -- then averaged the rescaled softmax outputs on
+test. Result: 64.37%/63.40%/45.84%, marginally worse than the uncalibrated
+average (64.56%/63.60%/46.01%) on every metric. The members were already
+reasonably well-calibrated (temperatures close to 1), so there wasn't much
+for this to fix. Not pursued further; plain equal-weight averaging of the
+three members remains the best result.
+
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
 on relative performance, differential graph attention, auxiliary unimodal
