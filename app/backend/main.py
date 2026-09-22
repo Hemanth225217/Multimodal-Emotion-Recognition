@@ -105,11 +105,17 @@ def get_video(dialogue_id: str, utterance_id: str):
 
 
 @torch.no_grad()
-def _single_modality_predictions(model, text, audio, video):
+def _single_modality_predictions(model, text, audio, video, speaker_slots):
     zero_text, zero_audio, zero_video = torch.zeros_like(text), torch.zeros_like(audio), torch.zeros_like(video)
-    text_pred = torch.argmax(model(text, zero_audio, zero_video).reshape(-1, NUM_CLASSES), dim=1).tolist()
-    audio_pred = torch.argmax(model(zero_text, audio, zero_video).reshape(-1, NUM_CLASSES), dim=1).tolist()
-    video_pred = torch.argmax(model(zero_text, zero_audio, video).reshape(-1, NUM_CLASSES), dim=1).tolist()
+    text_pred = torch.argmax(
+        model(text, zero_audio, zero_video, speaker_slots=speaker_slots).reshape(-1, NUM_CLASSES), dim=1
+    ).tolist()
+    audio_pred = torch.argmax(
+        model(zero_text, audio, zero_video, speaker_slots=speaker_slots).reshape(-1, NUM_CLASSES), dim=1
+    ).tolist()
+    video_pred = torch.argmax(
+        model(zero_text, zero_audio, video, speaker_slots=speaker_slots).reshape(-1, NUM_CLASSES), dim=1
+    ).tolist()
     return text_pred, audio_pred, video_pred
 
 
@@ -127,6 +133,10 @@ def predict(req: PredictRequest):
     text = sample["text"].unsqueeze(0).to(DEVICE)
     audio = sample["audio"].unsqueeze(0).to(DEVICE)
     video = sample["video"].unsqueeze(0).to(DEVICE)
+    speaker_slots = (
+        sample["speaker_slots"].unsqueeze(0).to(DEVICE)
+        if "num_speaker_slots" in _checkpoint_meta else None
+    )
 
     if not req.use_text:
         text = torch.zeros_like(text)
@@ -135,7 +145,7 @@ def predict(req: PredictRequest):
     if not req.use_video:
         video = torch.zeros_like(video)
 
-    result = predict_dialogue(model, text, audio, video)
+    result = predict_dialogue(model, text, audio, video, speaker_slots=speaker_slots)
     i = req.utterance_index
 
     pred_class = int(result["predictions"][i])
@@ -143,7 +153,7 @@ def predict(req: PredictRequest):
     weights = result["modality_weights"][i].tolist()
     probabilities = {EMOTION_NAMES[c]: float(result["probabilities"][i, c]) for c in range(NUM_CLASSES)}
 
-    text_preds, audio_preds, video_preds = _single_modality_predictions(model, text, audio, video)
+    text_preds, audio_preds, video_preds = _single_modality_predictions(model, text, audio, video, speaker_slots)
     level, score = disagreement_level(text_preds[i], audio_preds[i], video_preds[i])
 
     explanation = build_explanation(

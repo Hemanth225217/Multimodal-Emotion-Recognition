@@ -24,12 +24,16 @@ from modules.ambiguity import disagreement_level
 
 
 @torch.no_grad()
-def single_modality_predictions(model, text, audio, video):
+def single_modality_predictions(model, text, audio, video, speaker_slots):
     zero_text, zero_audio, zero_video = torch.zeros_like(text), torch.zeros_like(audio), torch.zeros_like(video)
 
-    text_logits = model(text, zero_audio, zero_video).reshape(-1, NUM_CLASSES)
-    audio_logits = model(zero_text, audio, zero_video).reshape(-1, NUM_CLASSES)
-    video_logits = model(zero_text, zero_audio, video).reshape(-1, NUM_CLASSES)
+    # Speaker context isn't one of the three modalities under test here, so
+    # it stays real (not zeroed) in every branch -- this asks "how much does
+    # removing text/audio/video specifically hurt", not "what if we also had
+    # no speaker info".
+    text_logits = model(text, zero_audio, zero_video, speaker_slots=speaker_slots).reshape(-1, NUM_CLASSES)
+    audio_logits = model(zero_text, audio, zero_video, speaker_slots=speaker_slots).reshape(-1, NUM_CLASSES)
+    video_logits = model(zero_text, zero_audio, video, speaker_slots=speaker_slots).reshape(-1, NUM_CLASSES)
 
     return (
         torch.argmax(text_logits, dim=1).cpu().tolist(),
@@ -43,7 +47,9 @@ def main():
 
     test_dataset = MELDDataset(split="test")
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
-    model, _ = load_model(FINAL_MODEL_PATH)
+    model, meta = load_model(FINAL_MODEL_PATH)
+    use_speaker = "num_speaker_slots" in meta
+    print(f"Speaker embedding: {'trained, using real slots' if use_speaker else 'not present in this checkpoint, skipping'}\n")
 
     records = []
     for batch in test_loader:
@@ -51,9 +57,10 @@ def main():
         audio = batch["audio"].to(DEVICE, dtype=torch.float32)
         video = batch["video"].to(DEVICE, dtype=torch.float32)
         labels = batch["labels"].reshape(-1).tolist()
+        speaker_slots = batch["speaker_slots"].to(DEVICE, dtype=torch.long) if use_speaker else None
 
-        fusion = predict_dialogue(model, text, audio, video)
-        text_preds, audio_preds, video_preds = single_modality_predictions(model, text, audio, video)
+        fusion = predict_dialogue(model, text, audio, video, speaker_slots=speaker_slots)
+        text_preds, audio_preds, video_preds = single_modality_predictions(model, text, audio, video, speaker_slots)
 
         for i, true_label in enumerate(labels):
             fusion_pred = int(fusion["predictions"][i])

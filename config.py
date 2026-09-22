@@ -24,13 +24,20 @@ MELD_ANNOTATIONS_DIR = PROJECT_ROOT / "meld_dataset" / "raw"
 # Model dimensions (fixed by the pre-extracted MELD baseline features)
 # --------------------------------------------------------------------------
 
-# TEXT_DIM is 768 (frozen DistilBERT, see modules/text_features_distilbert.py)
-# rather than the original MELD paper's 600-D task-specific CNN features.
+# TEXT_DIM is 768 -- frozen RoBERTa-base (modules/text_features_roberta.py),
+# tried after DistilBERT (also 768-D), rather than the original MELD paper's
+# 600-D task-specific CNN features.
 TEXT_DIM = 768
 AUDIO_DIM = 300
 VIDEO_DIM = 512
 HIDDEN_DIM = 256
 NUM_CLASSES = 7
+
+# Dialogue-relative speaker slots (1st distinct speaker in a dialogue = slot
+# 0, 2nd = slot 1, ...), not a global per-character embedding -- see
+# modules/data_loader.load_speaker_lookup for why. Observed max distinct
+# speakers in one MELD dialogue is 9 (train); this leaves headroom.
+NUM_SPEAKER_SLOTS = 10
 
 EMOTION_NAMES = [
     "neutral",

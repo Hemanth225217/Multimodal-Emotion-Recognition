@@ -1,15 +1,27 @@
 import pickle
 from pathlib import Path
 
+import pandas as pd
+
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # Location of the downloaded MELD feature files (original 2018 paper release)
 BASE_DIR = PROJECT_ROOT / "meld_features" / "MELD.Features.Models" / "features"
 
-# Frozen DistilBERT text embeddings (modules/text_features_distilbert.py),
-# used in place of the original 600-D task-specific CNN text features.
+# Speaker names aren't in the original MELD.Features.Models pickles, so
+# they're read directly from the official annotation CSVs when needed.
+MELD_CSV_DIR = PROJECT_ROOT / "meld_dataset" / "data" / "MELD"
+SPEAKER_CSV_FILES = {
+    "train": "train_sent_emo.csv",
+    "val": "dev_sent_emo.csv",
+    "test": "test_sent_emo.csv",
+}
+
+# Frozen text embeddings, tried in this order (both replace the original
+# 600-D task-specific CNN text features from the MELD paper's release):
 DISTILBERT_TEXT_PATH = PROJECT_ROOT / "meld_features" / "text_distilbert" / "text_distilbert.pkl"
+ROBERTA_TEXT_PATH = PROJECT_ROOT / "meld_features" / "text_roberta" / "text_roberta.pkl"
 
 
 # Emotion mapping used by MELD
@@ -37,6 +49,22 @@ def load_pickle(filename):
         return pickle.load(file, encoding="latin1")
 
 
+def load_speaker_lookup(split):
+    """Maps (dialogue_id, utterance_id) -> speaker name for one split.
+
+    Used to build dialogue-relative speaker slots (see training/dataset.py)
+    rather than a global per-character embedding: MELD has 260 unique
+    speaker names in train alone, dominated by the 6 main cast members with
+    a long tail of one-off guest characters, so a name-keyed embedding
+    would overfit and wouldn't generalize to unseen test speakers.
+    """
+    df = pd.read_csv(MELD_CSV_DIR / SPEAKER_CSV_FILES[split])
+    return {
+        (int(row.Dialogue_ID), int(row.Utterance_ID)): str(row.Speaker)
+        for row in df.itertuples()
+    }
+
+
 def load_original_text_features():
     """The original MELD paper's 600-D task-specific CNN text features.
 
@@ -49,13 +77,16 @@ def load_original_text_features():
 def load_features():
     """Load text, audio and emotion information from MELD.
 
-    Text uses frozen DistilBERT embeddings (768-D, see
-    modules/text_features_distilbert.py) instead of the original paper's
-    600-D task-specific CNN features -- a stronger modern encoder, while
-    still pre-extracted rather than fine-tuned end-to-end here.
+    Text uses frozen RoBERTa-base embeddings (768-D, see
+    modules/text_features_roberta.py) -- tried after DistilBERT
+    (modules/text_features_distilbert.py, still available via
+    DISTILBERT_TEXT_PATH) as a stronger pretraining recipe at a similar
+    size, in pursuit of matching AMB-DSGDN's RoBERTa-large text encoder as
+    closely as CPU-only extraction allows. Still pre-extracted, not
+    fine-tuned end-to-end.
     """
 
-    with open(DISTILBERT_TEXT_PATH, "rb") as file:
+    with open(ROBERTA_TEXT_PATH, "rb") as file:
         text_features = pickle.load(file)
 
     audio_features = load_pickle("audio_emotion.pkl")

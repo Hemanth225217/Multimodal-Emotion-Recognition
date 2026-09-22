@@ -46,6 +46,13 @@ abstract:
      currently strongest gets dropped more, the weakest less -- rather than
      the fixed 40/15/15 split used in the previous version.
 
+This version also adds speaker-aware context: a learned embedding for each
+utterance's dialogue-relative speaker slot (config.NUM_SPEAKER_SLOTS), added
+to the fused representation before the dialogue context attention. This is
+the biggest architectural gap identified against AMB-DSGDN and most of the
+ERC literature (DialogueRNN, DialogueGCN, ...), which explicitly model
+same-/cross-speaker relationships; this project previously used none.
+
 Produces models/final_model.pt.
 """
 
@@ -62,7 +69,10 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from config import TEXT_DIM, AUDIO_DIM, VIDEO_DIM, NUM_CLASSES, EMOTION_NAMES, FINAL_MODEL_PATH, SEED, DEVICE
+from config import (
+    TEXT_DIM, AUDIO_DIM, VIDEO_DIM, NUM_CLASSES, NUM_SPEAKER_SLOTS,
+    EMOTION_NAMES, FINAL_MODEL_PATH, SEED, DEVICE,
+)
 from training.dataset import MELDDataset
 from models.fusion_model import MultimodalFusionModel
 
@@ -158,7 +168,8 @@ def unpack_batch(batch):
     audio = batch["audio"].to(DEVICE, dtype=torch.float32)
     video = batch["video"].to(DEVICE, dtype=torch.float32)
     labels = batch["labels"].to(DEVICE, dtype=torch.long)
-    return text, audio, video, labels
+    speaker_slots = batch["speaker_slots"].to(DEVICE, dtype=torch.long)
+    return text, audio, video, labels, speaker_slots
 
 
 def apply_modality_dropout(text, audio, video, probs):
@@ -221,12 +232,14 @@ def run_epoch(model, loader, criterion, optimizer=None, dropout_probs=None):
 
     with torch.set_grad_enabled(train_mode):
         for step, batch in enumerate(loader, start=1):
-            text, audio, video, labels = unpack_batch(batch)
+            text, audio, video, labels, speaker_slots = unpack_batch(batch)
 
             if train_mode:
                 text, audio, video = apply_modality_dropout(text, audio, video, dropout_probs)
 
-            logits, modality_weights, aux_logits = model(text, audio, video, return_aux=True)
+            logits, modality_weights, aux_logits = model(
+                text, audio, video, speaker_slots=speaker_slots, return_aux=True
+            )
             logits = logits.reshape(-1, NUM_CLASSES)
             labels = labels.reshape(-1)
 
@@ -300,7 +313,8 @@ def main():
     class_weights = compute_class_weights(train_dataset).to(DEVICE)
 
     model = MultimodalFusionModel(
-        text_dim=TEXT_DIM, audio_dim=AUDIO_DIM, video_dim=VIDEO_DIM, num_classes=NUM_CLASSES
+        text_dim=TEXT_DIM, audio_dim=AUDIO_DIM, video_dim=VIDEO_DIM, num_classes=NUM_CLASSES,
+        num_speaker_slots=NUM_SPEAKER_SLOTS,
     ).to(DEVICE)
     total_params = sum(p.numel() for p in model.parameters())
     print(f"\nModel parameters: {total_params:,}")
@@ -368,6 +382,7 @@ def main():
                     "audio_dim": AUDIO_DIM,
                     "video_dim": VIDEO_DIM,
                     "num_classes": NUM_CLASSES,
+                    "num_speaker_slots": NUM_SPEAKER_SLOTS,
                     "emotion_names": EMOTION_NAMES,
                     "training_config": {
                         "learning_rate": LEARNING_RATE,
@@ -376,7 +391,8 @@ def main():
                         "seed": SEED,
                         "strategy": (
                             "single-stage adaptive fusion, moderate class weighting, gentle focal loss, "
-                            "adaptive modality dropout, modality-weight cap penalty, auxiliary unimodal losses"
+                            "adaptive modality dropout, modality-weight cap penalty, auxiliary unimodal losses, "
+                            "dialogue-relative speaker embedding"
                         ),
                         "modality_dropout_probs_this_epoch": probs_used_this_epoch,
                         "max_modality_weight": MAX_MODALITY_WEIGHT,

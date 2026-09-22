@@ -19,7 +19,8 @@ sys.path.insert(
 )
 
 
-from modules.data_loader import load_features
+from modules.data_loader import load_features, load_speaker_lookup
+from config import NUM_SPEAKER_SLOTS
 
 
 # ============================================================
@@ -159,6 +160,12 @@ class MELDDataset(Dataset):
         self.audio_data = audio_data[
             self.split_index
         ]
+
+        # ====================================================
+        # SPEAKER LOOKUP (for dialogue-relative speaker slots)
+        # ====================================================
+
+        self.speaker_lookup = load_speaker_lookup(split)
 
         # ====================================================
         # EMOTION MAPPING
@@ -460,6 +467,13 @@ class MELDDataset(Dataset):
 
         aligned_utterance_ids = []
 
+        aligned_speaker_slots = []
+
+        # Dialogue-relative: the first distinct speaker encountered in this
+        # dialogue gets slot 0, the second gets slot 1, and so on -- see
+        # config.NUM_SPEAKER_SLOTS and modules/data_loader.load_speaker_lookup.
+        seen_speakers = {}
+
         for position, utterance_id in enumerate(
             sorted_utterance_ids
         ):
@@ -540,6 +554,26 @@ class MELDDataset(Dataset):
                 utterance_id
             )
 
+            # ------------------------------------------------
+            # Speaker slot (dialogue-relative, see __init__)
+            # ------------------------------------------------
+
+            speaker_name = self.speaker_lookup.get(
+                (int(dialogue_id), utterance_id),
+                "UNKNOWN"
+            )
+
+            if speaker_name not in seen_speakers:
+
+                seen_speakers[speaker_name] = min(
+                    len(seen_speakers),
+                    NUM_SPEAKER_SLOTS - 1
+                )
+
+            aligned_speaker_slots.append(
+                seen_speakers[speaker_name]
+            )
+
         # ====================================================
         # CONVERT TO TENSORS
         # ====================================================
@@ -568,6 +602,11 @@ class MELDDataset(Dataset):
 
         labels = torch.tensor(
             aligned_labels,
+            dtype=torch.long
+        )
+
+        speaker_slots = torch.tensor(
+            aligned_speaker_slots,
             dtype=torch.long
         )
 
@@ -617,6 +656,8 @@ class MELDDataset(Dataset):
             "video": video,
 
             "labels": labels,
+
+            "speaker_slots": speaker_slots,
 
             "utterance_ids": aligned_utterance_ids,
 

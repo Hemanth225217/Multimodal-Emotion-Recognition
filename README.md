@@ -109,45 +109,49 @@ the fusion model's confidence and correctness (`evaluation/disagreement_analysis
 `training/train_final.py`: adaptive fusion architecture, moderate class
 weighting, gentle focal loss, adaptive modality dropout, a modality-weight
 cap penalty, and auxiliary unimodal losses (see the modality-collapse note
-above for the dropout/cap history), trained on frozen DistilBERT text
-features. Checkpoint selection uses validation **weighted F1**, not macro F1.
-Full run: `logs/train_final.log` (all superseded attempts kept as
-`logs/train_final_run*.log` for the record -- eight full runs in total).
+above for the dropout/cap history), trained on frozen RoBERTa-base text
+features (see below). Checkpoint selection uses validation **weighted F1**,
+not macro F1. Full run: `logs/train_final.log` (all nine superseded attempts
+kept as `logs/train_final_run*.log` for the record).
 
 | Model | Accuracy | Weighted F1 | Macro F1 |
 |---|---|---|---|
 | Baseline (text+audio BiLSTM, no fusion) | 59.12% | 55.28% | 31.27% |
 | Final, original 600-D text features | 58.35% | 56.00% | 32.87% |
 | Final, DistilBERT text features | 61.69% | 59.97% | 38.29% |
-| **Final, + auxiliary unimodal losses + adaptive dropout** | 61.23% | **60.43%** | **41.44%** |
+| Final, + auxiliary unimodal losses + adaptive dropout | 61.23% | 60.43% | 41.44% |
+| **Final, + RoBERTa-base text features** | 60.96% | **60.68%** | **43.51%** |
 
-The last row is the current model. Accuracy dipped very slightly (-0.46) but
-weighted F1 and macro F1 both improved, and per-class results tell the more
-important story: **this is the first version in the project's history --
-baseline, V1-V4, or any of the eight runs done tonight -- where all seven
-emotion classes score a non-zero F1.** Disgust (0.0 in literally every prior
-version) reached 0.125; Fear improved from 0.092 to 0.121. Full per-class
-precision/recall/F1/support: `logs/evaluate_final_output.log`. Confusion
-matrix: `evaluation/confusion_matrix_final.png`.
+The last row is the current model. Accuracy is essentially flat across the
+last three rows, but weighted F1 and macro F1 keep climbing, and per-class
+balance keeps improving: Fear F1 nearly doubled (0.121 -> 0.222), Disgust
+improved (0.125 -> 0.144). This remains the first version in the project's
+history -- baseline, V1-V4, or any run done this session -- where all seven
+emotion classes score a non-zero F1. Full per-class precision/recall/F1/
+support: `logs/evaluate_final_output.log`. Confusion matrix:
+`evaluation/confusion_matrix_final.png`.
 
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
 on relative performance, differential graph attention, auxiliary unimodal
-losses) and the explicit target for this iteration. Its reported MELD
+losses) and the explicit target for this phase of work. Its reported MELD
 numbers: 66.07% accuracy / 66.18% weighted F1 (IEMOCAP: 76.09%/75.64%).
 
-**Honest verdict: we do not beat it.** Current model is 61.23%/60.43%, about
-5-6 points behind on both metrics. Two of our changes tonight were adapted
-directly from AMB-DSGDN's method (auxiliary unimodal losses, and dropout
-probability driven by relative modality performance instead of fixed
-constants) and both measurably helped -- best macro F1 and best per-class
-completeness of any version -- but didn't close the full gap. The remaining
-difference is architectural: AMB-DSGDN uses RoBERTa (1024-D, larger than our
-DistilBERT's 768-D) and a differential graph attention network over explicit
-intra-/inter-speaker subgraphs; we use BiLSTM + cross-attention with no
-speaker modeling at all. Adding speaker-aware modeling is the most likely
-remaining lever, not yet implemented (see the honest-novelty discussion for
-why this is still a legitimate, if incomplete, contribution).
+**Honest verdict: we still do not beat it.** Current model is 60.96%/60.68%,
+about 5 points behind on both metrics -- closer than before, but not closed.
+Three of our changes were adapted directly from AMB-DSGDN's method (auxiliary
+unimodal losses, dropout probability driven by relative modality performance,
+and a text encoder upgrade in the same spirit as their RoBERTa choice, though
+RoBERTa-**base** here rather than their RoBERTa-**large** for CPU-time
+reasons) and all three measurably helped -- this is the best macro F1 and
+per-class completeness of any version -- but haven't closed the full gap.
+**Speaker-aware modeling is next**: dialogue-relative speaker embeddings are
+now fully implemented (`config.NUM_SPEAKER_SLOTS`, threaded through the
+dataset loader, model, training script, and every evaluation script) and
+smoke-tested, but not yet evaluated in a real training run -- this was the
+single biggest architectural gap identified against AMB-DSGDN and most ERC
+literature (DialogueRNN, DialogueGCN, ...), which explicitly model same-/
+cross-speaker relationships.
 
 **For broader context:** other 2024-2026 systems on this task report
 weighted F1 in the 66-74% range (MCN-CL 73.1%, AMuSE ~74%, AM2-EmoJE 71.98%,

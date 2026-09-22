@@ -10,12 +10,23 @@ class MultimodalFusionModel(nn.Module):
         audio_dim=300,
         video_dim=512,
         hidden_dim=256,
-        num_classes=7
+        num_classes=7,
+        num_speaker_slots=10
     ):
 
         super().__init__()
 
         self.hidden_dim = hidden_dim
+
+        # ============================================================
+        # SPEAKER EMBEDDING (dialogue-relative slot, see
+        # training/dataset.py and config.NUM_SPEAKER_SLOTS)
+        #
+        # Optional at the forward() call site: passing speaker_slots=None
+        # skips this entirely, so older call sites keep working unchanged.
+        # ============================================================
+
+        self.speaker_embedding = nn.Embedding(num_speaker_slots, hidden_dim)
 
         # ============================================================
         # TEXT ENCODER
@@ -322,6 +333,7 @@ class MultimodalFusionModel(nn.Module):
         text,
         audio,
         video,
+        speaker_slots=None,
         return_weights=False,
         return_aux=False
     ):
@@ -508,6 +520,25 @@ class MultimodalFusionModel(nn.Module):
         # ============================================================
 
         fused = fused + residual
+
+        # ============================================================
+        # SPEAKER EMBEDDING
+        #
+        # Added before context attention so the attention mechanism can
+        # use speaker identity (dialogue-relative slot) as part of what it
+        # compares utterances by -- e.g. learning to weigh same-speaker
+        # utterances differently from a different speaker's, the way
+        # DialogueRNN/DialogueGCN-style speaker states do, without a full
+        # graph architecture. Skipped entirely if speaker_slots is None.
+        # ============================================================
+
+        if speaker_slots is not None:
+
+            speaker_embed = self.speaker_embedding(
+                speaker_slots
+            )
+
+            fused = fused + speaker_embed
 
         # ============================================================
         # DIALOGUE CONTEXT ATTENTION

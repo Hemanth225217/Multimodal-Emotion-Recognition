@@ -26,7 +26,7 @@ from training.dataset import MELDDataset
 from modules.inference import load_model, predict_dialogue
 
 
-def evaluate(model, loader):
+def evaluate(model, loader, use_speaker):
     all_preds, all_labels = [], []
     for batch in loader:
         text = batch["text"].to(DEVICE, dtype=torch.float32)
@@ -34,7 +34,14 @@ def evaluate(model, loader):
         video = batch["video"].to(DEVICE, dtype=torch.float32)
         labels = batch["labels"].reshape(-1).tolist()
 
-        result = predict_dialogue(model, text, audio, video)
+        # Only pass real speaker slots for checkpoints that were actually
+        # trained with the speaker embedding -- for an older checkpoint
+        # that layer is left at random init (see modules/inference.py's
+        # strict=False load), and feeding it real slots would inject
+        # untrained noise into a model that never learned to use it.
+        speaker_slots = batch["speaker_slots"].to(DEVICE, dtype=torch.long) if use_speaker else None
+
+        result = predict_dialogue(model, text, audio, video, speaker_slots=speaker_slots)
         all_preds.extend(result["predictions"].tolist())
         all_labels.extend(labels)
 
@@ -56,7 +63,10 @@ def main():
             f"val_macro_f1={meta.get('val_macro_f1', float('nan')):.4f}\n"
         )
 
-    labels, preds = evaluate(model, test_loader)
+    use_speaker = "num_speaker_slots" in meta
+    print(f"Speaker embedding: {'trained, using real slots' if use_speaker else 'not present in this checkpoint, skipping'}\n")
+
+    labels, preds = evaluate(model, test_loader, use_speaker)
 
     print("=== OVERALL TEST METRICS ===")
     print(f"Accuracy           : {accuracy_score(labels, preds):.4f}")

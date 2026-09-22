@@ -31,7 +31,7 @@ CONFIGS = {
 
 
 @torch.no_grad()
-def evaluate_config(model, loader, use_text, use_audio, use_video):
+def evaluate_config(model, loader, use_text, use_audio, use_video, use_speaker):
     all_preds, all_labels = [], []
 
     for batch in loader:
@@ -39,6 +39,7 @@ def evaluate_config(model, loader, use_text, use_audio, use_video):
         audio = batch["audio"].to(DEVICE, dtype=torch.float32)
         video = batch["video"].to(DEVICE, dtype=torch.float32)
         labels = batch["labels"].reshape(-1).tolist()
+        speaker_slots = batch["speaker_slots"].to(DEVICE, dtype=torch.long) if use_speaker else None
 
         if not use_text:
             text = torch.zeros_like(text)
@@ -47,7 +48,7 @@ def evaluate_config(model, loader, use_text, use_audio, use_video):
         if not use_video:
             video = torch.zeros_like(video)
 
-        logits = model(text, audio, video).reshape(-1, NUM_CLASSES)
+        logits = model(text, audio, video, speaker_slots=speaker_slots).reshape(-1, NUM_CLASSES)
         all_preds.extend(torch.argmax(logits, dim=1).cpu().tolist())
         all_labels.extend(labels)
 
@@ -67,11 +68,13 @@ def main():
 
     test_dataset = MELDDataset(split="test")
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
-    model, _ = load_model(FINAL_MODEL_PATH)
+    model, meta = load_model(FINAL_MODEL_PATH)
+    use_speaker = "num_speaker_slots" in meta
+    print(f"Speaker embedding: {'trained, using real slots' if use_speaker else 'not present in this checkpoint, skipping'}\n")
 
     results = {}
     for name, (use_text, use_audio, use_video) in CONFIGS.items():
-        results[name] = evaluate_config(model, test_loader, use_text, use_audio, use_video)
+        results[name] = evaluate_config(model, test_loader, use_text, use_audio, use_video, use_speaker)
         r = results[name]
         print(f"{name:20s} acc={r['accuracy']:.4f}  weightedF1={r['weighted_f1']:.4f}  macroF1={r['macro_f1']:.4f}")
 
