@@ -90,19 +90,24 @@ def load_original_text_features():
     return load_pickle("text_emotion.pkl")
 
 
-def load_features():
+def load_features(text_path=None):
     """Load text, audio and emotion information from MELD.
 
-    Text uses frozen RoBERTa-base embeddings (768-D, see
+    Text uses frozen RoBERTa-base embeddings by default (768-D, see
     modules/text_features_roberta.py) -- tried after DistilBERT
     (modules/text_features_distilbert.py, still available via
     DISTILBERT_TEXT_PATH) as a stronger pretraining recipe at a similar
     size, in pursuit of matching AMB-DSGDN's RoBERTa-large text encoder as
     closely as CPU-only extraction allows. Still pre-extracted, not
     fine-tuned end-to-end.
+
+    text_path overrides which pickle to load -- used to build a second,
+    DistilBERT-aligned dataset instance for ensembling with the older
+    DistilBERT-trained checkpoint (see evaluation/ensemble_test.py), without
+    disturbing the default RoBERTa path every other caller relies on.
     """
 
-    with open(ROBERTA_TEXT_PATH, "rb") as file:
+    with open(text_path or ROBERTA_TEXT_PATH, "rb") as file:
         text_features = pickle.load(file)
 
     audio_features = load_pickle("audio_emotion.pkl")

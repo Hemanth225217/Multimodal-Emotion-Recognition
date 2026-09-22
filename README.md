@@ -203,8 +203,35 @@ an uncertain gain -- not pursued for now. Tried a second seed (44) to rule
 out bad luck: solo 59.12%/59.04%/42.47% (the weakest of the three same-recipe
 seeds), 3-way ensemble 62.03%/61.47%/44.36% -- worse than the 2-member
 ensemble again, on every metric. Two independent seeds now confirm the same
-pattern. **The 2-member ensemble (A+B above) remains the best result**, and
-naive equal-weight seed-ensembling is done being pursued for this project.
+pattern: **same-recipe seed diversity isn't enough to help here.**
+
+**A genuinely different member (not just a different seed) does help --
+substantially.** The insight from the seed failures: A, B, and the two seed
+variants are all the *same* architecture and text features, so they tend to
+make the same mistakes. `evaluation/ensemble_test.py` was rewritten to also
+support the old DistilBERT-trained checkpoint (git commit c06594c, 61.23%/
+60.43%/41.44% solo) as a member fed a *different* text embedding space
+entirely -- verified this needs its own dataset instance
+(`text_path=DISTILBERT_TEXT_PATH`) that is separately confirmed to align
+perfectly with the RoBERTa dataset (identical dialogue order, lengths, and
+labels across all 280 test dialogues) before trusting positional averaging.
+Every combination including this member beat every prior result:
+
+| Ensemble | Accuracy | Weighted F1 | Macro F1 |
+|---|---|---|---|
+| B + DistilBERT | 64.48% | 63.21% | 44.63% |
+| A + B + DistilBERT | 63.91% | 62.87% | 45.04% |
+| **B + seed43 + DistilBERT** | **64.56%** | **63.60%** | **46.01%** |
+| A + B + seed43 + DistilBERT | 64.25% | 63.23% | 45.67% |
+
+**New best result: B + seed43 + DistilBERT, 64.56% accuracy / 63.60%
+weighted F1 / 46.01% macro F1** -- every metric better than the 2-member
+ensemble, no class collapsed (Neutral F1 0.782, the best of any version;
+Fear 0.240, Disgust 0.142, both solid). The lesson: ensembling needs
+genuinely different models (different architectures/features), not just
+different random seeds of the same one -- exactly what the seed-43/44
+failures already suggested before this confirmed it. Full report:
+`logs/ensemble_test_output.log`.
 
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
@@ -212,16 +239,18 @@ on relative performance, differential graph attention, auxiliary unimodal
 losses) and the explicit target for this phase of work. Its reported MELD
 numbers: 66.07% accuracy / 66.18% weighted F1 (IEMOCAP: 76.09%/75.64%).
 
-**Honest verdict: we still do not beat it, but this is the closest yet.**
-Best validated result is now the 2-checkpoint ensemble: 63.18% accuracy /
-62.45% weighted F1 -- **2.89 / 3.73 points behind** respectively, down from
-~5 points behind at the start of this session. Four single-model changes
-adapted from AMB-DSGDN's method helped (auxiliary unimodal losses, adaptive
-dropout, the RoBERTa text upgrade, dialogue-relative speaker embeddings);
-the speaker-relational attention bias and sentiment loss, tested three ways,
-did not; ensembling, a technique AMB-DSGDN's paper doesn't use, did. Not
-every idea inspired by a stronger paper transfers cleanly, and reporting the
-failures is as much part of the record as the successes.
+**Honest verdict: we still do not beat it, but the gap is now small.** Best
+validated result is the 3-checkpoint ensemble (B + seed43 + DistilBERT):
+64.56% accuracy / 63.60% weighted F1 -- **1.51 / 2.58 points behind**
+respectively, down from ~5 points behind at the start of this session. Four
+single-model changes adapted from AMB-DSGDN's method helped (auxiliary
+unimodal losses, adaptive dropout, the RoBERTa text upgrade, dialogue-
+relative speaker embeddings); the speaker-relational attention bias and
+sentiment loss, tested three ways, did not; ensembling -- a technique
+AMB-DSGDN's paper doesn't use -- did, once it combined genuinely different
+models rather than reseeded copies of the same one. Not every idea inspired
+by a stronger paper transfers cleanly, and reporting the failures is as much
+part of the record as the successes.
 
 **For broader context:** other 2024-2026 systems on this task report
 weighted F1 in the 66-74% range (MCN-CL 73.1%, AMuSE ~74%, AM2-EmoJE 71.98%,

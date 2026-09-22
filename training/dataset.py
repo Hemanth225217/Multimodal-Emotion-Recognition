@@ -71,15 +71,21 @@ class MELDDataset(Dataset):
         perfectly aligned.
     """
 
-    def __init__(self, split="train"):
+    def __init__(self, split="train", text_path=None):
 
         super().__init__()
 
         # ====================================================
         # LOAD TEXT, AUDIO AND EMOTION DATA
+        #
+        # text_path overrides the default RoBERTa features -- used to build
+        # a DistilBERT-aligned instance for ensembling with the older
+        # DistilBERT-trained checkpoint (see modules.data_loader.load_features
+        # and evaluation/ensemble_test.py). Audio/video/labels/speaker/
+        # sentiment alignment is identical either way; only text differs.
         # ====================================================
 
-        text_data, audio_data, emotion_data = load_features()
+        text_data, audio_data, emotion_data = load_features(text_path)
 
         # ====================================================
         # SPLIT MAPPING
