@@ -111,7 +111,7 @@ weighting, gentle focal loss, adaptive modality dropout, a modality-weight
 cap penalty, and auxiliary unimodal losses (see the modality-collapse note
 above for the dropout/cap history), trained on frozen RoBERTa-base text
 features (see below). Checkpoint selection uses validation **weighted F1**,
-not macro F1. Full run: `logs/train_final.log` (all nine superseded attempts
+not macro F1. Full run: `logs/train_final.log` (all ten superseded attempts
 kept as `logs/train_final_run*.log` for the record).
 
 | Model | Accuracy | Weighted F1 | Macro F1 |
@@ -120,15 +120,16 @@ kept as `logs/train_final_run*.log` for the record).
 | Final, original 600-D text features | 58.35% | 56.00% | 32.87% |
 | Final, DistilBERT text features | 61.69% | 59.97% | 38.29% |
 | Final, + auxiliary unimodal losses + adaptive dropout | 61.23% | 60.43% | 41.44% |
-| **Final, + RoBERTa-base text features** | 60.96% | **60.68%** | **43.51%** |
+| Final, + RoBERTa-base text features | 60.96% | 60.68% | **43.51%** |
+| **Final, + dialogue-relative speaker embeddings** | **62.45%** | **61.50%** | 42.74% |
 
-The last row is the current model. Accuracy is essentially flat across the
-last three rows, but weighted F1 and macro F1 keep climbing, and per-class
-balance keeps improving: Fear F1 nearly doubled (0.121 -> 0.222), Disgust
-improved (0.125 -> 0.144). This remains the first version in the project's
-history -- baseline, V1-V4, or any run done this session -- where all seven
-emotion classes score a non-zero F1. Full per-class precision/recall/F1/
-support: `logs/evaluate_final_output.log`. Confusion matrix:
+The last row is the current model. Speaker-aware modeling is the first
+change this session to move accuracy meaningfully (+1.49 points) rather than
+trading it off, though it cost a little macro F1 (43.51% -> 42.74%): Disgust
+F1 dropped from 0.144 to 0.050 (support is only 68 test utterances, so this
+is a noisy class, but it's a real regression on this run, not omitted here).
+Fear held steady at 0.222. Full per-class precision/recall/F1/support:
+`logs/evaluate_final_output.log`. Confusion matrix:
 `evaluation/confusion_matrix_final.png`.
 
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
@@ -137,30 +138,30 @@ on relative performance, differential graph attention, auxiliary unimodal
 losses) and the explicit target for this phase of work. Its reported MELD
 numbers: 66.07% accuracy / 66.18% weighted F1 (IEMOCAP: 76.09%/75.64%).
 
-**Honest verdict: we still do not beat it.** Current model is 60.96%/60.68%,
-about 5 points behind on both metrics -- closer than before, but not closed.
-Three of our changes were adapted directly from AMB-DSGDN's method (auxiliary
-unimodal losses, dropout probability driven by relative modality performance,
-and a text encoder upgrade in the same spirit as their RoBERTa choice, though
-RoBERTa-**base** here rather than their RoBERTa-**large** for CPU-time
-reasons) and all three measurably helped -- this is the best macro F1 and
-per-class completeness of any version -- but haven't closed the full gap.
-**Speaker-aware modeling is next**: dialogue-relative speaker embeddings are
-now fully implemented (`config.NUM_SPEAKER_SLOTS`, threaded through the
-dataset loader, model, training script, and every evaluation script) and
-smoke-tested, but not yet evaluated in a real training run -- this was the
-single biggest architectural gap identified against AMB-DSGDN and most ERC
-literature (DialogueRNN, DialogueGCN, ...), which explicitly model same-/
-cross-speaker relationships.
+**Honest verdict: we still do not beat it, but the gap is closing.** Current
+model is 62.45% accuracy / 61.50% weighted F1 -- 3.62 / 4.68 points behind
+respectively, down from ~5 points behind two versions ago. Four of our
+changes were adapted directly from AMB-DSGDN's method (auxiliary unimodal
+losses, dropout probability driven by relative modality performance, a text
+encoder upgrade in the same spirit as their RoBERTa choice though RoBERTa-
+**base** here rather than their RoBERTa-**large** for CPU-time reasons, and
+now dialogue-relative speaker embeddings in place of their full speaker-
+relation graph) and all four measurably helped on at least one axis. **Next:**
+two more ideas are implemented and about to be tested together -- a
+speaker-relational attention bias in the dialogue context attention (two
+learned scalars distinguishing same-speaker from different-speaker utterance
+pairs, a cheap approximation of the graph-based relational modeling AMB-DSGDN
+and DialogueGCN/DialogueRNN use, without an actual graph-conv layer), and a
+sentiment auxiliary loss using MELD's own 3-way Sentiment column as a second,
+correlated supervision signal alongside the main 7-way emotion task.
 
 **For broader context:** other 2024-2026 systems on this task report
 weighted F1 in the 66-74% range (MCN-CL 73.1%, AMuSE ~74%, AM2-EmoJE 71.98%,
 TelME 67.37%, AMB-DSGDN 66.18%) -- all fine-tune large pretrained
 transformers end-to-end on GPUs, several with graph networks or contrastive
-learning. This project's 60.43% weighted F1 comes from frozen features (no
-fine-tuning) and a lightweight ~7.1M-parameter architecture trained entirely
-on a CPU laptop -- a real, expected gap given that difference in scale, not
-a flaw in the fusion/context-modelling approach itself.
+learning. This project's frozen-feature, ~7.1M-parameter architecture
+trained entirely on a CPU laptop is closing that gap incrementally rather
+than matching their scale outright.
 
 ## Dataset
 
@@ -256,7 +257,9 @@ python -m uvicorn app.backend.main:app --port 8000
 | V4 (V2 + moderate class weighting, gentle focal loss) | 57.36% | 56.32% | 34.16% | Best historical accuracy/weighted-F1, but weights still collapsed onto text (not measured at the time -- see below) |
 | Final, original text features | 58.35% | 56.00% | 32.87% | V4's recipe + modality dropout + weight-cap penalty (fixes modality collapse) |
 | Final, DistilBERT text features | 61.69% | 59.97% | 38.29% | Same as above + frozen DistilBERT text embeddings instead of the 2018 CNN features |
-| **Final, + auxiliary unimodal losses + adaptive dropout** | 61.23% | **60.43%** | **41.44%** | Same as above + two ideas adapted from AMB-DSGDN (2026); first version with a non-zero F1 on all seven classes (Disgust: 0.0 -> 0.125) |
+| Final, + auxiliary unimodal losses + adaptive dropout | 61.23% | 60.43% | 41.44% | Same as above + two ideas adapted from AMB-DSGDN (2026); first version with a non-zero F1 on all seven classes (Disgust: 0.0 -> 0.125) |
+| Final, + RoBERTa-base text features | 60.96% | 60.68% | 43.51% | Stronger frozen text encoder, in the spirit of AMB-DSGDN's RoBERTa-large; best macro F1 and per-class balance yet, small accuracy trade-off |
+| **Final, + dialogue-relative speaker embeddings** | **62.45%** | **61.50%** | 42.74% | First change to move accuracy meaningfully rather than trade it off; cost some macro F1 (Disgust F1 0.144 -> 0.050, low-support class) |
 
 **On modality collapse specifically:** every historical version above
 (including V4) was never checked for this -- `evaluation/disagreement_analysis.py`
