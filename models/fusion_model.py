@@ -606,7 +606,13 @@ class MultimodalFusionModel(nn.Module):
             query=fused,
             key=fused,
             value=fused,
-            attn_mask=context_attn_bias
+            # TEMPORARILY not applying context_attn_bias here: two runs with
+            # it enabled (with and without the sentiment loss) both collapsed
+            # Fear and Disgust to 0.0 F1, even though the learned bias values
+            # were tiny (+/-0.03) -- see README "Results". Isolating the
+            # sentiment loss alone next with this mechanism disabled, rather
+            # than deleting a possibly-salvageable idea outright.
+            attn_mask=None
         )
 
         fused = self.context_norm(

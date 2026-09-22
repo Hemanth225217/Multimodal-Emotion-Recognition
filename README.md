@@ -111,7 +111,7 @@ weighting, gentle focal loss, adaptive modality dropout, a modality-weight
 cap penalty, and auxiliary unimodal losses (see the modality-collapse note
 above for the dropout/cap history), trained on frozen RoBERTa-base text
 features (see below). Checkpoint selection uses validation **weighted F1**,
-not macro F1. Full run: `logs/train_final.log` (all eleven superseded
+not macro F1. Full run: `logs/train_final.log` (all twelve superseded
 attempts kept as `logs/train_final_run*.log` for the record, regressions
 included).
 
@@ -124,6 +124,7 @@ included).
 | Final, + RoBERTa-base text features | 60.96% | 60.68% | **43.51%** |
 | **Final, + dialogue-relative speaker embeddings** | **62.45%** | **61.50%** | 42.74% |
 | ~~+ speaker-relational attn bias + sentiment loss~~ | ~~61.57%~~ | ~~60.23%~~ | ~~38.41%~~ |
+| ~~+ speaker-relational attn bias alone~~ | ~~60.77%~~ | ~~59.84%~~ | ~~37.97%~~ |
 
 The bolded row is the current model. Speaker-aware modeling is the first
 change this session to move accuracy meaningfully (+1.49 points) rather than
@@ -134,27 +135,33 @@ Fear held steady at 0.222. Full per-class precision/recall/F1/support:
 `logs/evaluate_final_output.log`. Confusion matrix:
 `evaluation/confusion_matrix_final.png`.
 
-**The struck-through row is a real, reported failure, not hidden.** Adding
-the speaker-relational attention bias and sentiment auxiliary loss *together*
-made every headline metric worse than speaker embeddings alone, and Fear and
-Disgust both collapsed to **0.0 F1** (0 Disgust predictions and 1 Fear
-prediction across the entire 2,610-utterance test set) -- worse than the
-original un-fixed modality collapse this project spent real effort curing
-earlier. Working hypothesis: the sentiment auxiliary loss is the likely
-cause, not the attention bias. Fear/Sadness/Disgust/Anger all map to the
-same "negative" sentiment label, so a loss term that rewards the *shared*
-fused representation for being good at 3-way sentiment gives zero gradient
-signal to keep those four classes separated from each other -- actively
-working against the auxiliary unimodal losses and class weighting that were
-trying to protect exactly those minority classes. This checkpoint was
-**not** kept as `models/final_model.pt` (reverted to the speaker-embedding
-checkpoint above); the failed run's log is kept as
-`logs/train_final_run11_relbias_sentiment_REGRESSION_60.23wf1.log` for the
-record, matching how V3's regression was kept earlier in this project's
-history rather than deleted. Next step: rerun with the sentiment loss
-disabled (weight 0) to isolate whether the attention bias is blameless, per
-the same one-variable-at-a-time discipline used to diagnose modality
-collapse originally.
+**Both struck-through rows are real, reported failures.** Adding a
+speaker-relational attention bias to the dialogue context attention (two
+learned scalars, same-speaker vs. different-speaker) collapsed Fear and
+Disgust to **0.0 F1**, whether tested alongside the sentiment loss or with
+the sentiment loss weighted at exactly 0.0 -- i.e. with the bias as the only
+active change. **A first hypothesis (that the sentiment loss was the cause,
+since Fear/Sadness/Disgust/Anger all share the same "negative" sentiment
+label) was directly tested and is wrong**: disabling that loss did not fix
+the collapse, and macro F1 got slightly worse still (38.41% -> 37.97%). The
+attention bias itself is the reproducible cause. Why remains only partly
+understood: the learned bias values were tiny (+/-0.03 at convergence, see
+`models/fusion_model.py`), too small to plausibly saturate the attention
+softmax by magnitude alone, so brute-force score distortion isn't a
+satisfying explanation on its own -- an interaction with the adaptive
+modality-dropout/auxiliary-loss dynamics on already-low-support classes is
+more likely, but unconfirmed. **The bias mechanism is now disabled**
+(`attn_mask=None` in `models/fusion_model.py`, code kept rather than
+deleted in case it's revisited later) rather than pursued further, since two
+independent attempts both broke the same two classes identically and the
+project's CPU time is better spent elsewhere. Neither checkpoint was kept as
+`models/final_model.pt` (both reverted to the speaker-embedding checkpoint
+above); logs are kept as `logs/train_final_run11_relbias_sentiment_
+REGRESSION_60.23wf1.log` and `logs/train_final_run12_relbias_alone_
+REGRESSION_59.84wf1.log` for the record, matching how V3's regression was
+kept earlier in this project's history rather than deleted. The sentiment
+loss itself is not yet cleared or condemned on its own merits -- it's being
+tested next with the bias mechanism switched off.
 
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
@@ -167,9 +174,9 @@ numbers: 66.07% accuracy / 66.18% weighted F1 (IEMOCAP: 76.09%/75.64%).
 respectively, down from ~5 points behind two versions ago. Four changes
 adapted from AMB-DSGDN's method have helped so far (auxiliary unimodal
 losses, adaptive dropout, the RoBERTa text upgrade, dialogue-relative speaker
-embeddings); a fifth attempt (this section) did not. Not every idea inspired
-by a stronger paper transfers cleanly, and reporting the failures is as much
-part of the record as the successes.
+embeddings); the speaker-relational attention bias, tested twice, did not.
+Not every idea inspired by a stronger paper transfers cleanly, and reporting
+the failures is as much part of the record as the successes.
 
 **For broader context:** other 2024-2026 systems on this task report
 weighted F1 in the 66-74% range (MCN-CL 73.1%, AMuSE ~74%, AM2-EmoJE 71.98%,

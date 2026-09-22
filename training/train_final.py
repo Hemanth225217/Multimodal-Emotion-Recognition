@@ -128,15 +128,12 @@ AUX_LOSS_WEIGHT = 0.3
 # Smaller than AUX_LOSS_WEIGHT since sentiment is a coarser 3-way signal
 # meant to nudge the shared representation, not dominate the main 7-way task.
 #
-# TEMPORARILY 0.0: run11 (speaker-relational bias + this, weight 0.2, both
-# added together) regressed every headline metric vs. speaker embeddings
-# alone and collapsed Fear/Disgust to 0.0 F1 -- see README "Results". Zeroed
-# here to isolate whether the attention bias is blameless, since
-# Fear/Sadness/Disgust/Anger all share the "negative" sentiment label and a
-# shared-representation loss that can't tell them apart is a plausible cause
-# of exactly that collapse. Restore to 0.2 (and keep the bias) only if this
-# isolation run shows the bias alone is fine.
-SENTIMENT_LOSS_WEIGHT = 0.0
+# run11 (bias + this @ 0.2) and run12 (bias alone, this @ 0.0) both
+# collapsed Fear/Disgust to 0.0 F1 -- so the attention bias, not this loss,
+# is the more likely cause (see models/fusion_model.py, now disabled, and
+# README "Results"). Restored to 0.2 to test this loss on its own with the
+# bias mechanism switched off.
+SENTIMENT_LOSS_WEIGHT = 0.2
 
 NEUTRAL, SURPRISE, FEAR, SADNESS, JOY, DISGUST, ANGER = range(7)
 
