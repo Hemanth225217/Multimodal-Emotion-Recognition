@@ -199,8 +199,12 @@ than the other two dilutes the stronger prediction rather than adding useful
 diversity. A performance-weighted average might fix this, but tuning
 weights properly needs a validation-set search to avoid quietly overfitting
 them to the test set, which costs real time this close to the deadline for
-an uncertain gain -- not pursued for now. **The 2-member ensemble (A+B
-above) remains the best result.**
+an uncertain gain -- not pursued for now. Tried a second seed (44) to rule
+out bad luck: solo 59.12%/59.04%/42.47% (the weakest of the three same-recipe
+seeds), 3-way ensemble 62.03%/61.47%/44.36% -- worse than the 2-member
+ensemble again, on every metric. Two independent seeds now confirm the same
+pattern. **The 2-member ensemble (A+B above) remains the best result**, and
+naive equal-weight seed-ensembling is done being pursued for this project.
 
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
