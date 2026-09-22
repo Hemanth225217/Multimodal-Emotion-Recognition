@@ -11,7 +11,8 @@ class MultimodalFusionModel(nn.Module):
         video_dim=512,
         hidden_dim=256,
         num_classes=7,
-        num_speaker_slots=10
+        num_speaker_slots=10,
+        num_sentiment_classes=3
     ):
 
         super().__init__()
@@ -27,6 +28,23 @@ class MultimodalFusionModel(nn.Module):
         # ============================================================
 
         self.speaker_embedding = nn.Embedding(num_speaker_slots, hidden_dim)
+
+        # ============================================================
+        # SPEAKER-RELATIONAL ATTENTION BIAS
+        #
+        # A cheap, CPU-feasible stand-in for the explicit speaker-relation
+        # graphs used by DialogueRNN/DialogueGCN-style models (and the
+        # graph structure at the core of AMB-DSGDN): two learned scalars,
+        # added to the dialogue context attention's scores depending on
+        # whether the query/key utterance pair share a speaker. This lets
+        # attention learn "weigh this speaker's own earlier lines
+        # differently from someone else's" without building an actual
+        # graph-conv layer. Skipped (no bias) when speaker_slots is None,
+        # same as the speaker embedding above.
+        # ============================================================
+
+        self.same_speaker_bias = nn.Parameter(torch.zeros(1))
+        self.diff_speaker_bias = nn.Parameter(torch.zeros(1))
 
         # ============================================================
         # TEXT ENCODER
@@ -300,6 +318,22 @@ class MultimodalFusionModel(nn.Module):
         self.video_aux_classifier = nn.Linear(hidden_dim, num_classes)
 
         # ============================================================
+        # SENTIMENT AUXILIARY CLASSIFIER
+        #
+        # MELD ships a 3-way Sentiment label (neutral/positive/negative)
+        # alongside the 7-way Emotion label, not a deterministic function
+        # of it (surprise splits across both positive and negative). A
+        # small multi-task head off the same fused dialogue representation
+        # used for the main classifier, trained with its own loss (see
+        # training/train_final.py), gives the model a second, correlated
+        # supervision signal for free -- no new features needed, and MELD
+        # was originally released as a joint emotion+sentiment benchmark.
+        # Inference-only use of the model can ignore this entirely.
+        # ============================================================
+
+        self.sentiment_classifier = nn.Linear(hidden_dim, num_sentiment_classes)
+
+        # ============================================================
         # FINAL CLASSIFIER
         # ============================================================
 
@@ -532,6 +566,8 @@ class MultimodalFusionModel(nn.Module):
         # graph architecture. Skipped entirely if speaker_slots is None.
         # ============================================================
 
+        context_attn_bias = None
+
         if speaker_slots is not None:
 
             speaker_embed = self.speaker_embedding(
@@ -540,6 +576,28 @@ class MultimodalFusionModel(nn.Module):
 
             fused = fused + speaker_embed
 
+            # --------------------------------------------------
+            # Speaker-relational attention bias (see __init__).
+            # Assumes batch_size=1 (true at every call site in this
+            # repo -- dialogues have variable utterance counts and
+            # there's no padding/collate_fn), so the bias matrix is
+            # built from the single dialogue's speaker slots and
+            # broadcasts across attention heads via the unbatched
+            # (L, S) attn_mask form.
+            # --------------------------------------------------
+
+            speaker_ids = speaker_slots[0]
+
+            same_speaker = (
+                speaker_ids.unsqueeze(0) == speaker_ids.unsqueeze(1)
+            )
+
+            context_attn_bias = torch.where(
+                same_speaker,
+                self.same_speaker_bias,
+                self.diff_speaker_bias
+            )
+
         # ============================================================
         # DIALOGUE CONTEXT ATTENTION
         # ============================================================
@@ -547,7 +605,8 @@ class MultimodalFusionModel(nn.Module):
         context_output, _ = self.context_attention(
             query=fused,
             key=fused,
-            value=fused
+            value=fused,
+            attn_mask=context_attn_bias
         )
 
         fused = self.context_norm(
@@ -593,7 +652,9 @@ class MultimodalFusionModel(nn.Module):
                 "video": self.video_aux_classifier(video_feature),
             }
 
-            return output, modality_weights_out, aux_logits
+            sentiment_logits = self.sentiment_classifier(fused)
+
+            return output, modality_weights_out, aux_logits, sentiment_logits
 
         if return_weights:
 

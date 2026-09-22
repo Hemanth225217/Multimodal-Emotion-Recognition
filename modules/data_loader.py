@@ -65,6 +65,22 @@ def load_speaker_lookup(split):
     }
 
 
+def load_sentiment_lookup(split):
+    """Maps (dialogue_id, utterance_id) -> sentiment string for one split.
+
+    Used as an auxiliary multi-task loss (see training/train_final.py):
+    MELD's Sentiment column isn't a deterministic function of Emotion
+    (surprise appears under both positive and negative sentiment depending
+    on context), so it carries real extra signal rather than just relabeling
+    the main task.
+    """
+    df = pd.read_csv(MELD_CSV_DIR / SPEAKER_CSV_FILES[split])
+    return {
+        (int(row.Dialogue_ID), int(row.Utterance_ID)): str(row.Sentiment)
+        for row in df.itertuples()
+    }
+
+
 def load_original_text_features():
     """The original MELD paper's 600-D task-specific CNN text features.
 

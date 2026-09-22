@@ -50,6 +50,14 @@ EMOTION_NAMES = [
 ]
 EMOTION_TO_ID = {name: idx for idx, name in enumerate(EMOTION_NAMES)}
 
+# MELD also ships a 3-way Sentiment column (neutral/positive/negative)
+# alongside Emotion -- not a deterministic function of it (surprise splits
+# across both positive and negative depending on context), so it's a
+# genuinely separate signal used as an auxiliary multi-task loss (see
+# modules/data_loader.load_sentiment_lookup and training/train_final.py).
+SENTIMENT_NAMES = ["neutral", "positive", "negative"]
+NUM_SENTIMENT_CLASSES = len(SENTIMENT_NAMES)
+
 # --------------------------------------------------------------------------
 # Checkpoints
 # --------------------------------------------------------------------------

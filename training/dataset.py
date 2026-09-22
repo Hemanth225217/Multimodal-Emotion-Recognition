@@ -19,7 +19,7 @@ sys.path.insert(
 )
 
 
-from modules.data_loader import load_features, load_speaker_lookup
+from modules.data_loader import load_features, load_speaker_lookup, load_sentiment_lookup
 from config import NUM_SPEAKER_SLOTS
 
 
@@ -166,6 +166,18 @@ class MELDDataset(Dataset):
         # ====================================================
 
         self.speaker_lookup = load_speaker_lookup(split)
+
+        # ====================================================
+        # SENTIMENT LOOKUP (auxiliary multi-task loss)
+        # ====================================================
+
+        self.sentiment_lookup = load_sentiment_lookup(split)
+
+        self.sentiment_map = {
+            "neutral": 0,
+            "positive": 1,
+            "negative": 2,
+        }
 
         # ====================================================
         # EMOTION MAPPING
@@ -469,6 +481,8 @@ class MELDDataset(Dataset):
 
         aligned_speaker_slots = []
 
+        aligned_sentiments = []
+
         # Dialogue-relative: the first distinct speaker encountered in this
         # dialogue gets slot 0, the second gets slot 1, and so on -- see
         # config.NUM_SPEAKER_SLOTS and modules/data_loader.load_speaker_lookup.
@@ -574,6 +588,19 @@ class MELDDataset(Dataset):
                 seen_speakers[speaker_name]
             )
 
+            # ------------------------------------------------
+            # Sentiment (auxiliary multi-task loss, see __init__)
+            # ------------------------------------------------
+
+            sentiment_name = self.sentiment_lookup.get(
+                (int(dialogue_id), utterance_id),
+                "neutral"
+            )
+
+            aligned_sentiments.append(
+                self.sentiment_map[sentiment_name]
+            )
+
         # ====================================================
         # CONVERT TO TENSORS
         # ====================================================
@@ -607,6 +634,11 @@ class MELDDataset(Dataset):
 
         speaker_slots = torch.tensor(
             aligned_speaker_slots,
+            dtype=torch.long
+        )
+
+        sentiment_labels = torch.tensor(
+            aligned_sentiments,
             dtype=torch.long
         )
 
@@ -658,6 +690,8 @@ class MELDDataset(Dataset):
             "labels": labels,
 
             "speaker_slots": speaker_slots,
+
+            "sentiment_labels": sentiment_labels,
 
             "utterance_ids": aligned_utterance_ids,
 

@@ -52,6 +52,24 @@ to the fused representation before the dialogue context attention. This is
 the biggest architectural gap identified against AMB-DSGDN and most of the
 ERC literature (DialogueRNN, DialogueGCN, ...), which explicitly model
 same-/cross-speaker relationships; this project previously used none.
+Verified on the test set: accuracy 60.96% -> 62.45%, weighted F1 60.68% ->
+61.50% (macro F1 dipped slightly, 43.51% -> 42.74%, mostly a Disgust
+regression on a 68-utterance-support class).
+
+Two more ideas, added together and tested as one experiment:
+  5. A speaker-relational attention bias in the dialogue context attention:
+     two learned scalars (same-speaker vs. different-speaker) added to the
+     attention scores. A cheap, CPU-feasible approximation of the explicit
+     speaker-relation graphs AMB-DSGDN and DialogueGCN/DialogueRNN build,
+     without an actual graph-conv layer or new library dependency.
+  6. A sentiment auxiliary loss: MELD ships a 3-way Sentiment label
+     (neutral/positive/negative) alongside the 7-way Emotion label, and it
+     is not a deterministic function of it (surprise splits across both
+     positive and negative depending on context). A small classifier head
+     off the same fused representation, trained with its own cross-entropy
+     loss, gives the model a second correlated supervision signal for free
+     -- no new features needed, and MELD was originally released as a
+     joint emotion+sentiment benchmark.
 
 Produces models/final_model.pt.
 """
@@ -71,7 +89,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config import (
     TEXT_DIM, AUDIO_DIM, VIDEO_DIM, NUM_CLASSES, NUM_SPEAKER_SLOTS,
-    EMOTION_NAMES, FINAL_MODEL_PATH, SEED, DEVICE,
+    NUM_SENTIMENT_CLASSES, EMOTION_NAMES, FINAL_MODEL_PATH, SEED, DEVICE,
 )
 from training.dataset import MELDDataset
 from models.fusion_model import MultimodalFusionModel
@@ -105,6 +123,11 @@ DROPOUT_EMA_DECAY = 0.6  # smooths updates against the previous epoch's probs
 
 # Weight on the summed auxiliary unimodal losses (added to the main loss).
 AUX_LOSS_WEIGHT = 0.3
+
+# Weight on the sentiment auxiliary loss (see module docstring, idea 6).
+# Smaller than AUX_LOSS_WEIGHT since sentiment is a coarser 3-way signal
+# meant to nudge the shared representation, not dominate the main 7-way task.
+SENTIMENT_LOSS_WEIGHT = 0.2
 
 NEUTRAL, SURPRISE, FEAR, SADNESS, JOY, DISGUST, ANGER = range(7)
 
@@ -169,7 +192,8 @@ def unpack_batch(batch):
     video = batch["video"].to(DEVICE, dtype=torch.float32)
     labels = batch["labels"].to(DEVICE, dtype=torch.long)
     speaker_slots = batch["speaker_slots"].to(DEVICE, dtype=torch.long)
-    return text, audio, video, labels, speaker_slots
+    sentiment_labels = batch["sentiment_labels"].to(DEVICE, dtype=torch.long)
+    return text, audio, video, labels, speaker_slots, sentiment_labels
 
 
 def apply_modality_dropout(text, audio, video, probs):
@@ -229,19 +253,22 @@ def run_epoch(model, loader, criterion, optimizer=None, dropout_probs=None):
     total_entropy = 0.0
     all_preds, all_labels = [], []
     aux_preds = {"text": [], "audio": [], "video": []}
+    sentiment_preds, sentiment_targets = [], []
 
     with torch.set_grad_enabled(train_mode):
         for step, batch in enumerate(loader, start=1):
-            text, audio, video, labels, speaker_slots = unpack_batch(batch)
+            text, audio, video, labels, speaker_slots, sentiment_labels = unpack_batch(batch)
 
             if train_mode:
                 text, audio, video = apply_modality_dropout(text, audio, video, dropout_probs)
 
-            logits, modality_weights, aux_logits = model(
+            logits, modality_weights, aux_logits, sentiment_logits = model(
                 text, audio, video, speaker_slots=speaker_slots, return_aux=True
             )
             logits = logits.reshape(-1, NUM_CLASSES)
             labels = labels.reshape(-1)
+            sentiment_logits = sentiment_logits.reshape(-1, NUM_SENTIMENT_CLASSES)
+            sentiment_labels = sentiment_labels.reshape(-1)
 
             classification_loss = criterion(logits, labels)
             entropy = modality_weight_entropy(modality_weights)  # diagnostic only
@@ -254,7 +281,14 @@ def run_epoch(model, loader, criterion, optimizer=None, dropout_probs=None):
                 aux_preds[modality].extend(torch.argmax(modality_logits, dim=1).detach().cpu().tolist())
             aux_loss = aux_loss / len(aux_logits)
 
-            loss = classification_loss + CAP_PENALTY_WEIGHT * cap_penalty + AUX_LOSS_WEIGHT * aux_loss
+            sentiment_loss = nn.functional.cross_entropy(sentiment_logits, sentiment_labels)
+
+            loss = (
+                classification_loss
+                + CAP_PENALTY_WEIGHT * cap_penalty
+                + AUX_LOSS_WEIGHT * aux_loss
+                + SENTIMENT_LOSS_WEIGHT * sentiment_loss
+            )
 
             if train_mode:
                 optimizer.zero_grad(set_to_none=True)
@@ -266,12 +300,15 @@ def run_epoch(model, loader, criterion, optimizer=None, dropout_probs=None):
             total_entropy += entropy.item()
             all_preds.extend(torch.argmax(logits, dim=1).detach().cpu().tolist())
             all_labels.extend(labels.detach().cpu().tolist())
+            sentiment_preds.extend(torch.argmax(sentiment_logits, dim=1).detach().cpu().tolist())
+            sentiment_targets.extend(sentiment_labels.detach().cpu().tolist())
 
             if train_mode and step % 200 == 0:
                 running_acc = accuracy_score(all_labels, all_preds)
                 print(
                     f"  step {step}/{len(loader)}  loss={classification_loss.item():.4f}  "
-                    f"auxLoss={aux_loss.item():.4f}  capPenalty={cap_penalty.item():.4f}  "
+                    f"auxLoss={aux_loss.item():.4f}  sentLoss={sentiment_loss.item():.4f}  "
+                    f"capPenalty={cap_penalty.item():.4f}  "
                     f"entropy={entropy.item():.4f}  running_acc={running_acc:.4f}"
                 )
 
@@ -287,6 +324,7 @@ def run_epoch(model, loader, criterion, optimizer=None, dropout_probs=None):
         "macro_f1": f1_score(all_labels, all_preds, average="macro", zero_division=0),
         "weighted_f1": f1_score(all_labels, all_preds, average="weighted", zero_division=0),
         "aux_accuracy": aux_accuracy,
+        "sentiment_accuracy": accuracy_score(sentiment_targets, sentiment_preds),
     }
     return metrics, all_labels, all_preds
 
@@ -302,6 +340,8 @@ def main():
     )
     print(f"Modality-weight cap: penalty {CAP_PENALTY_WEIGHT}x for any weight above {MAX_MODALITY_WEIGHT:.0%}")
     print(f"Auxiliary unimodal loss weight: {AUX_LOSS_WEIGHT}")
+    print(f"Sentiment auxiliary loss weight: {SENTIMENT_LOSS_WEIGHT}")
+    print("Speaker-relational attention bias: enabled (same-speaker vs different-speaker learned scalars)")
     print("=" * 70)
 
     train_dataset = MELDDataset(split="train")
@@ -314,7 +354,7 @@ def main():
 
     model = MultimodalFusionModel(
         text_dim=TEXT_DIM, audio_dim=AUDIO_DIM, video_dim=VIDEO_DIM, num_classes=NUM_CLASSES,
-        num_speaker_slots=NUM_SPEAKER_SLOTS,
+        num_speaker_slots=NUM_SPEAKER_SLOTS, num_sentiment_classes=NUM_SENTIMENT_CLASSES,
     ).to(DEVICE)
     total_params = sum(p.numel() for p in model.parameters())
     print(f"\nModel parameters: {total_params:,}")
@@ -358,10 +398,14 @@ def main():
             f"macroF1={train_metrics['macro_f1']:.4f} weightedF1={train_metrics['weighted_f1']:.4f} "
             f"weightEntropy={train_metrics['entropy']:.4f}/{math.log(3):.4f}"
         )
-        print(f"train aux accuracy: {aux_acc_str}")
+        print(
+            f"train aux accuracy: {aux_acc_str}  "
+            f"sentiment_accuracy={train_metrics['sentiment_accuracy']:.4f}"
+        )
         print(
             f"val:   loss={val_metrics['loss']:.4f} acc={val_metrics['accuracy']:.4f} "
             f"macroF1={val_metrics['macro_f1']:.4f} weightedF1={val_metrics['weighted_f1']:.4f}  "
+            f"sentiment_accuracy={val_metrics['sentiment_accuracy']:.4f}  "
             f"({epoch_time:.0f}s)"
         )
 
@@ -383,6 +427,7 @@ def main():
                     "video_dim": VIDEO_DIM,
                     "num_classes": NUM_CLASSES,
                     "num_speaker_slots": NUM_SPEAKER_SLOTS,
+                    "num_sentiment_classes": NUM_SENTIMENT_CLASSES,
                     "emotion_names": EMOTION_NAMES,
                     "training_config": {
                         "learning_rate": LEARNING_RATE,
@@ -392,13 +437,16 @@ def main():
                         "strategy": (
                             "single-stage adaptive fusion, moderate class weighting, gentle focal loss, "
                             "adaptive modality dropout, modality-weight cap penalty, auxiliary unimodal losses, "
-                            "dialogue-relative speaker embedding"
+                            "dialogue-relative speaker embedding, speaker-relational attention bias, "
+                            "sentiment auxiliary loss"
                         ),
                         "modality_dropout_probs_this_epoch": probs_used_this_epoch,
                         "max_modality_weight": MAX_MODALITY_WEIGHT,
                         "cap_penalty_weight": CAP_PENALTY_WEIGHT,
                         "aux_loss_weight": AUX_LOSS_WEIGHT,
+                        "sentiment_loss_weight": SENTIMENT_LOSS_WEIGHT,
                         "train_aux_accuracy": train_metrics["aux_accuracy"],
+                        "train_sentiment_accuracy": train_metrics["sentiment_accuracy"],
                         "val_modality_weight_entropy": val_metrics["entropy"],
                     },
                 },
