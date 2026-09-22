@@ -189,6 +189,19 @@ Not yet wired into the demo app (`app/backend/main.py` still serves the
 single speaker-embedding checkpoint) -- the ensemble is currently a
 reporting-time technique, run offline via the script above.
 
+**Adding a 3rd member (a second seed) made it worse, not better.** Tried
+the obvious follow-up: trained the identical recipe under seed 43 (solo:
+60.46%/60.70%/44.83% -- a respectable macro F1, weaker accuracy) and added
+it to the average with equal weight. Result: 62.91%/62.30%/45.24%, worse
+than the 2-member ensemble on accuracy and weighted F1, and about equal on
+macro F1. Equal-weight averaging with a member that's individually weaker
+than the other two dilutes the stronger prediction rather than adding useful
+diversity. A performance-weighted average might fix this, but tuning
+weights properly needs a validation-set search to avoid quietly overfitting
+them to the test set, which costs real time this close to the deadline for
+an uncertain gain -- not pursued for now. **The 2-member ensemble (A+B
+above) remains the best result.**
+
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
 on relative performance, differential graph attention, auxiliary unimodal

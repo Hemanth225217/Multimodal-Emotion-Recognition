@@ -128,12 +128,12 @@ AUX_LOSS_WEIGHT = 0.3
 # Smaller than AUX_LOSS_WEIGHT since sentiment is a coarser 3-way signal
 # meant to nudge the shared representation, not dominate the main 7-way task.
 #
-# run11 (bias + this @ 0.2) and run12 (bias alone, this @ 0.0) both
-# collapsed Fear/Disgust to 0.0 F1 -- so the attention bias, not this loss,
-# is the more likely cause (see models/fusion_model.py, now disabled, and
-# README "Results"). Restored to 0.2 to test this loss on its own with the
-# bias mechanism switched off.
-SENTIMENT_LOSS_WEIGHT = 0.2
+# run13 (this @ 0.2, bias off) tested clean: no collapse, but still a net
+# loss vs. the speaker-embedding checkpoint on weighted F1 (see README
+# "Results"). Back to 0.0 -- this run reproduces that checkpoint's exact
+# recipe (RoBERTa + aux losses + adaptive dropout + speaker embeddings only)
+# under a different seed, for ensembling (evaluation/ensemble_test.py).
+SENTIMENT_LOSS_WEIGHT = 0.0
 
 NEUTRAL, SURPRISE, FEAR, SADNESS, JOY, DISGUST, ANGER = range(7)
 
