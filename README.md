@@ -125,6 +125,7 @@ included).
 | **Final, + dialogue-relative speaker embeddings** | **62.45%** | **61.50%** | 42.74% |
 | ~~+ speaker-relational attn bias + sentiment loss~~ | ~~61.57%~~ | ~~60.23%~~ | ~~38.41%~~ |
 | ~~+ speaker-relational attn bias alone~~ | ~~60.77%~~ | ~~59.84%~~ | ~~37.97%~~ |
+| ~~+ sentiment auxiliary loss alone (bias off)~~ | ~~61.95%~~ | ~~60.13%~~ | ~~41.30%~~ |
 
 The bolded row is the current model. Speaker-aware modeling is the first
 change this session to move accuracy meaningfully (+1.49 points) rather than
@@ -159,9 +160,20 @@ project's CPU time is better spent elsewhere. Neither checkpoint was kept as
 above); logs are kept as `logs/train_final_run11_relbias_sentiment_
 REGRESSION_60.23wf1.log` and `logs/train_final_run12_relbias_alone_
 REGRESSION_59.84wf1.log` for the record, matching how V3's regression was
-kept earlier in this project's history rather than deleted. The sentiment
-loss itself is not yet cleared or condemned on its own merits -- it's being
-tested next with the bias mechanism switched off.
+kept earlier in this project's history rather than deleted.
+
+**Sentiment loss, tested alone with the bias off: also not kept, but for a
+different reason.** No collapse this time (Fear 0.182, Disgust 0.117 --
+Disgust's best score of any version so far), but accuracy and weighted F1
+both landed below the speaker-embedding baseline (61.95%/60.13% vs.
+62.45%/61.50%), trading Surprise/Sadness F1 for Fear/Disgust F1 rather than
+improving overall. Under this project's own selection rule (weighted F1),
+that's a net loss, so it's reverted too (`logs/train_final_run13_sentiment_
+alone_60.13wf1.log`). Deadline is 3-7 days out and the priority is model
+numbers, so rather than a fourth attempt in this same area (classifier/
+attention-level tweaks), the plan is now the higher-ceiling, not-yet-tried
+levers: finishing the Wav2Vec2 audio upgrade (built, never run) and cheap
+ensembling of already-trained checkpoints.
 
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
