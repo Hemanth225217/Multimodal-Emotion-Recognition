@@ -135,6 +135,13 @@ AUX_LOSS_WEIGHT = 0.3
 # under a different seed, for ensembling (evaluation/ensemble_test.py).
 SENTIMENT_LOSS_WEIGHT = 0.0
 
+# Label smoothing on the main classification loss: a standard, near-free
+# regularizer, not yet tried in this project. Default 0.0 (off) so existing
+# runs are unaffected; set to e.g. 0.05-0.1 for the next experiment once
+# there's CPU time free to test it (currently busy with the Wav2Vec2 audio
+# extraction -- see modules/audio_features_wav2vec2.py).
+LABEL_SMOOTHING = 0.0
+
 NEUTRAL, SURPRISE, FEAR, SADNESS, JOY, DISGUST, ANGER = range(7)
 
 random.seed(SEED)
@@ -151,13 +158,20 @@ class FocalLoss(nn.Module):
     weights was the best trade-off found during experimentation.
     """
 
-    def __init__(self, class_weights, gamma=FOCAL_GAMMA):
+    def __init__(self, class_weights, gamma=FOCAL_GAMMA, label_smoothing=LABEL_SMOOTHING):
         super().__init__()
         self.gamma = gamma
+        self.label_smoothing = label_smoothing
         self.register_buffer("class_weights", class_weights)
 
     def forward(self, logits, targets):
-        ce = nn.functional.cross_entropy(logits, targets, reduction="none")
+        ce = nn.functional.cross_entropy(
+            logits, targets, reduction="none", label_smoothing=self.label_smoothing
+        )
+        # Focal modulating factor still uses the hard-target probability,
+        # not smoothed -- smoothing changes what the loss is computed
+        # against, not which utterances count as "already easy" for the
+        # purpose of down-weighting them.
         target_prob = torch.softmax(logits, dim=1).gather(1, targets.unsqueeze(1)).squeeze(1)
         focal_factor = (1.0 - target_prob) ** self.gamma
         weights = self.class_weights[targets]
