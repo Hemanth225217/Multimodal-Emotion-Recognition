@@ -111,8 +111,9 @@ weighting, gentle focal loss, adaptive modality dropout, a modality-weight
 cap penalty, and auxiliary unimodal losses (see the modality-collapse note
 above for the dropout/cap history), trained on frozen RoBERTa-base text
 features (see below). Checkpoint selection uses validation **weighted F1**,
-not macro F1. Full run: `logs/train_final.log` (all ten superseded attempts
-kept as `logs/train_final_run*.log` for the record).
+not macro F1. Full run: `logs/train_final.log` (all eleven superseded
+attempts kept as `logs/train_final_run*.log` for the record, regressions
+included).
 
 | Model | Accuracy | Weighted F1 | Macro F1 |
 |---|---|---|---|
@@ -122,8 +123,9 @@ kept as `logs/train_final_run*.log` for the record).
 | Final, + auxiliary unimodal losses + adaptive dropout | 61.23% | 60.43% | 41.44% |
 | Final, + RoBERTa-base text features | 60.96% | 60.68% | **43.51%** |
 | **Final, + dialogue-relative speaker embeddings** | **62.45%** | **61.50%** | 42.74% |
+| ~~+ speaker-relational attn bias + sentiment loss~~ | ~~61.57%~~ | ~~60.23%~~ | ~~38.41%~~ |
 
-The last row is the current model. Speaker-aware modeling is the first
+The bolded row is the current model. Speaker-aware modeling is the first
 change this session to move accuracy meaningfully (+1.49 points) rather than
 trading it off, though it cost a little macro F1 (43.51% -> 42.74%): Disgust
 F1 dropped from 0.144 to 0.050 (support is only 68 test utterances, so this
@@ -132,28 +134,42 @@ Fear held steady at 0.222. Full per-class precision/recall/F1/support:
 `logs/evaluate_final_output.log`. Confusion matrix:
 `evaluation/confusion_matrix_final.png`.
 
+**The struck-through row is a real, reported failure, not hidden.** Adding
+the speaker-relational attention bias and sentiment auxiliary loss *together*
+made every headline metric worse than speaker embeddings alone, and Fear and
+Disgust both collapsed to **0.0 F1** (0 Disgust predictions and 1 Fear
+prediction across the entire 2,610-utterance test set) -- worse than the
+original un-fixed modality collapse this project spent real effort curing
+earlier. Working hypothesis: the sentiment auxiliary loss is the likely
+cause, not the attention bias. Fear/Sadness/Disgust/Anger all map to the
+same "negative" sentiment label, so a loss term that rewards the *shared*
+fused representation for being good at 3-way sentiment gives zero gradient
+signal to keep those four classes separated from each other -- actively
+working against the auxiliary unimodal losses and class weighting that were
+trying to protect exactly those minority classes. This checkpoint was
+**not** kept as `models/final_model.pt` (reverted to the speaker-embedding
+checkpoint above); the failed run's log is kept as
+`logs/train_final_run11_relbias_sentiment_REGRESSION_60.23wf1.log` for the
+record, matching how V3's regression was kept earlier in this project's
+history rather than deleted. Next step: rerun with the sentiment loss
+disabled (weight 0) to isolate whether the attention bias is blameless, per
+the same one-variable-at-a-time discipline used to diagnose modality
+collapse originally.
+
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
 on relative performance, differential graph attention, auxiliary unimodal
 losses) and the explicit target for this phase of work. Its reported MELD
 numbers: 66.07% accuracy / 66.18% weighted F1 (IEMOCAP: 76.09%/75.64%).
 
-**Honest verdict: we still do not beat it, but the gap is closing.** Current
-model is 62.45% accuracy / 61.50% weighted F1 -- 3.62 / 4.68 points behind
-respectively, down from ~5 points behind two versions ago. Four of our
-changes were adapted directly from AMB-DSGDN's method (auxiliary unimodal
-losses, dropout probability driven by relative modality performance, a text
-encoder upgrade in the same spirit as their RoBERTa choice though RoBERTa-
-**base** here rather than their RoBERTa-**large** for CPU-time reasons, and
-now dialogue-relative speaker embeddings in place of their full speaker-
-relation graph) and all four measurably helped on at least one axis. **Next:**
-two more ideas are implemented and about to be tested together -- a
-speaker-relational attention bias in the dialogue context attention (two
-learned scalars distinguishing same-speaker from different-speaker utterance
-pairs, a cheap approximation of the graph-based relational modeling AMB-DSGDN
-and DialogueGCN/DialogueRNN use, without an actual graph-conv layer), and a
-sentiment auxiliary loss using MELD's own 3-way Sentiment column as a second,
-correlated supervision signal alongside the main 7-way emotion task.
+**Honest verdict: we still do not beat it.** Best validated model remains
+62.45% accuracy / 61.50% weighted F1 -- 3.62 / 4.68 points behind
+respectively, down from ~5 points behind two versions ago. Four changes
+adapted from AMB-DSGDN's method have helped so far (auxiliary unimodal
+losses, adaptive dropout, the RoBERTa text upgrade, dialogue-relative speaker
+embeddings); a fifth attempt (this section) did not. Not every idea inspired
+by a stronger paper transfers cleanly, and reporting the failures is as much
+part of the record as the successes.
 
 **For broader context:** other 2024-2026 systems on this task report
 weighted F1 in the 66-74% range (MCN-CL 73.1%, AMuSE ~74%, AM2-EmoJE 71.98%,

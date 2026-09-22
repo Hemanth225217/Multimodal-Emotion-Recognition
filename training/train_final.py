@@ -127,7 +127,16 @@ AUX_LOSS_WEIGHT = 0.3
 # Weight on the sentiment auxiliary loss (see module docstring, idea 6).
 # Smaller than AUX_LOSS_WEIGHT since sentiment is a coarser 3-way signal
 # meant to nudge the shared representation, not dominate the main 7-way task.
-SENTIMENT_LOSS_WEIGHT = 0.2
+#
+# TEMPORARILY 0.0: run11 (speaker-relational bias + this, weight 0.2, both
+# added together) regressed every headline metric vs. speaker embeddings
+# alone and collapsed Fear/Disgust to 0.0 F1 -- see README "Results". Zeroed
+# here to isolate whether the attention bias is blameless, since
+# Fear/Sadness/Disgust/Anger all share the "negative" sentiment label and a
+# shared-representation loss that can't tell them apart is a plausible cause
+# of exactly that collapse. Restore to 0.2 (and keep the bias) only if this
+# isolation run shows the bias alone is fine.
+SENTIMENT_LOSS_WEIGHT = 0.0
 
 NEUTRAL, SURPRISE, FEAR, SADNESS, JOY, DISGUST, ANGER = range(7)
 
