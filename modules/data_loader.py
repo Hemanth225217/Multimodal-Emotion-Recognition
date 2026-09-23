@@ -23,6 +23,10 @@ SPEAKER_CSV_FILES = {
 DISTILBERT_TEXT_PATH = PROJECT_ROOT / "meld_features" / "text_distilbert" / "text_distilbert.pkl"
 ROBERTA_TEXT_PATH = PROJECT_ROOT / "meld_features" / "text_roberta" / "text_roberta.pkl"
 
+# Frozen audio embeddings (see modules/audio_features_wav2vec2.py), replacing
+# the original MELD paper's 300-D openSMILE-style features.
+WAV2VEC2_AUDIO_PATH = PROJECT_ROOT / "meld_features" / "audio_wav2vec2" / "audio_wav2vec2.pkl"
+
 
 # Emotion mapping used by MELD
 EMOTION_MAP = {
@@ -101,16 +105,22 @@ def load_features(text_path=None):
     closely as CPU-only extraction allows. Still pre-extracted, not
     fine-tuned end-to-end.
 
-    text_path overrides which pickle to load -- used to build a second,
-    DistilBERT-aligned dataset instance for ensembling with the older
-    DistilBERT-trained checkpoint (see evaluation/ensemble_test.py), without
-    disturbing the default RoBERTa path every other caller relies on.
+    Audio uses frozen Wav2Vec2-base embeddings (768-D, see
+    modules/audio_features_wav2vec2.py), replacing the original MELD paper's
+    300-D openSMILE-style features (still reachable via
+    load_pickle("audio_emotion.pkl") for comparison).
+
+    text_path overrides which text pickle to load -- used to build a
+    second, DistilBERT-aligned dataset instance for ensembling with the
+    older DistilBERT-trained checkpoint (see evaluation/ensemble_test.py),
+    without disturbing the default RoBERTa path every other caller relies on.
     """
 
     with open(text_path or ROBERTA_TEXT_PATH, "rb") as file:
         text_features = pickle.load(file)
 
-    audio_features = load_pickle("audio_emotion.pkl")
+    with open(WAV2VEC2_AUDIO_PATH, "rb") as file:
+        audio_features = pickle.load(file)
     emotion_data = load_pickle("data_emotion.p")
 
     return text_features, audio_features, emotion_data

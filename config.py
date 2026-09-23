@@ -28,7 +28,9 @@ MELD_ANNOTATIONS_DIR = PROJECT_ROOT / "meld_dataset" / "raw"
 # tried after DistilBERT (also 768-D), rather than the original MELD paper's
 # 600-D task-specific CNN features.
 TEXT_DIM = 768
-AUDIO_DIM = 300
+# AUDIO_DIM is 768 -- frozen Wav2Vec2-base (modules/audio_features_wav2vec2.py),
+# replacing the original MELD paper's 300-D openSMILE-style features.
+AUDIO_DIM = 768
 VIDEO_DIM = 512
 HIDDEN_DIM = 256
 NUM_CLASSES = 7
