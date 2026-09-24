@@ -259,9 +259,24 @@ embedding needs more capacity/tuning in the audio encoder LSTM than a
 straight dimension swap gives it, or is simply harder for this architecture
 to use well on noisy, music-and-crosstalk-heavy TV-show audio. Reported
 honestly rather than declared a win because the extraction itself succeeded.
-Tested as a 5th ensemble member (E) anyway, since DistilBERT proved a weak
-solo score can still add real value through diversity -- see the ensemble
-table below for whether that held here too.
+
+**Tested as a 5th ensemble member (E) anyway -- it does not help, in any
+combination.** DistilBERT's solo score was similarly unremarkable yet added
+real ensemble value, so the same test was run for E: all 5 checkpoints
+(A/B/C/D/E), every combination that includes B (15 total), full results in
+`logs/ensemble_test_output.log`. The highest accuracy of any combination is
+B+D+E at 64.71%, but its weighted F1 (63.26%) and macro F1 (44.86%) are both
+below B+C+D. **B+C+D remains the best result overall (64.56%/63.60%/46.01%)
+-- no combination that includes E beats it on weighted F1.** Unlike
+DistilBERT, which was a different *text* embedding space, E's checkpoint
+still uses the same text encoder and speaker embeddings as B and C; the only
+difference is audio, and apparently that alone doesn't produce assessments
+different enough from B/C's to be worth averaging in. Building this test
+also surfaced a real bug: `modules/inference.load_model()` always
+constructed models with `config.AUDIO_DIM` (768, the new default), so it
+crashed loading any pre-upgrade checkpoint (300-D audio) with a state_dict
+size mismatch. Fixed by reading dimensions from each checkpoint's own saved
+metadata first, falling back to config only when absent.
 
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
