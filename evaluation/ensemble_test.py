@@ -1,32 +1,36 @@
 """Ensemble test: average already-trained checkpoints' softmax probabilities,
 no retraining required.
 
+Each member was trained on a specific (text, audio) feature pair; the
+dataset instance it needs is looked up from FEATURE_CONFIG below and built
+once, then shared by every member with the same pair. All instances are
+verified aligned (identical dialogue order/lengths/labels) before combining
+predictions positionally.
+
 Members (each optional except B, set via environment variables so this can
 be re-run against whichever checkpoints currently exist without editing
 code):
-  - CHECKPOINT_A (env ENSEMBLE_CKPT_A): RoBERTa + auxiliary losses +
-    adaptive dropout, no speaker embedding (git commit c5d115a). Same
-    RoBERTa text features as B, so shares B's dataset instance directly.
-  - CHECKPOINT_B: the committed best (config.FINAL_MODEL_PATH, git commit
-    436cdcb) -- RoBERTa + speaker embeddings, seed 42. Always included.
+  - CHECKPOINT_A (env ENSEMBLE_CKPT_A): RoBERTa text + 300-D legacy audio,
+    auxiliary losses + adaptive dropout, no speaker embedding (commit
+    c5d115a).
+  - CHECKPOINT_B: the committed best (config.FINAL_MODEL_PATH, commit
+    436cdcb) -- RoBERTa text + 300-D legacy audio + speaker embeddings,
+    seed 42. Always included.
   - CHECKPOINT_C (env ENSEMBLE_CKPT_C): same recipe/features as B, a
     different seed. Tested with seeds 43 and 44: both made the ensemble
-    *worse* than A+B alone (see README "Results") -- same-recipe seed
-    diversity isn't enough here. Kept as an option for the record, not
-    because it's expected to help.
-  - CHECKPOINT_D (env ENSEMBLE_CKPT_D): DistilBERT + auxiliary losses +
-    adaptive dropout, no speaker embedding (git commit c06594c). Trained on
-    a *different* text embedding space (DistilBERT, not RoBERTa) -- a
-    genuinely different member rather than a reseeded rerun of the same
-    recipe, which A/B/C all are relative to each other. Needs its own
-    dataset instance built with text_path=DISTILBERT_TEXT_PATH; verified
-    separately that this produces identical dialogue ordering, lengths and
-    labels to the RoBERTa dataset (0 mismatches across all 280 test
-    dialogues), so predictions can be combined positionally.
+    *worse* than A+B alone -- same-recipe seed diversity isn't enough here.
+  - CHECKPOINT_D (env ENSEMBLE_CKPT_D): DistilBERT text + 300-D legacy
+    audio, auxiliary losses + adaptive dropout, no speaker embedding
+    (commit c06594c). A genuinely different text embedding space, unlike
+    A/B/C which only differ by seed or a small architectural addition.
+  - CHECKPOINT_E (env ENSEMBLE_CKPT_E): RoBERTa text + 768-D Wav2Vec2 audio,
+    same recipe as B (commit 14a71df). Solo score was a mixed result
+    (weaker weighted/macro F1 than B), tested here anyway since D proved a
+    weak solo score doesn't rule out ensemble value.
 
 Prints every solo score plus every ensemble combination that includes B
-(since B is the one member always present), so partial runs -- e.g. only D
-set alongside B -- are still informative.
+(since B is the one member always present), so partial runs -- e.g. only
+one extra member set -- are still informative.
 """
 
 import os
@@ -55,8 +59,18 @@ CHECKPOINT_PATHS = {
     "B": FINAL_MODEL_PATH,
     "C": env_path("ENSEMBLE_CKPT_C"),
     "D": env_path("ENSEMBLE_CKPT_D"),
+    "E": env_path("ENSEMBLE_CKPT_E"),
 }
-USES_DISTILBERT = {"D"}  # members in this set are fed the DistilBERT dataset instead of RoBERTa
+
+# (text_path, use_legacy_audio) each member's checkpoint was trained on.
+# None text_path means the default (RoBERTa).
+FEATURE_CONFIG = {
+    "A": (None, True),
+    "B": (None, True),
+    "C": (None, True),
+    "D": (DISTILBERT_TEXT_PATH, True),
+    "E": (None, False),
+}
 
 
 def metrics(labels, preds):
@@ -71,7 +85,8 @@ def main():
     active = {name: path for name, path in CHECKPOINT_PATHS.items() if path and path.exists()}
     print("Active members:")
     for name, path in active.items():
-        tag = "  (DistilBERT text)" if name in USES_DISTILBERT else ""
+        text_path, legacy_audio = FEATURE_CONFIG[name]
+        tag = f"  (text={'RoBERTa' if text_path is None else text_path.parent.name}, audio={'legacy 300D' if legacy_audio else 'Wav2Vec2 768D'})"
         print(f"  {name}: {path}{tag}")
     print()
 
@@ -81,32 +96,32 @@ def main():
         models[name] = model
         use_speaker[name] = "num_speaker_slots" in meta
 
-    roberta_dataset = MELDDataset(split="test")
-    distilbert_dataset = None
-    if any(name in USES_DISTILBERT for name in active):
-        distilbert_dataset = MELDDataset(split="test", text_path=DISTILBERT_TEXT_PATH)
-        assert len(distilbert_dataset) == len(roberta_dataset), "dataset length mismatch"
+    # Build one dataset instance per unique (text_path, use_legacy_audio) pair.
+    needed_configs = {FEATURE_CONFIG[name] for name in active}
+    datasets = {cfg: MELDDataset(split="test", text_path=cfg[0], use_legacy_audio=cfg[1]) for cfg in needed_configs}
+
+    lengths = {len(ds) for ds in datasets.values()}
+    assert len(lengths) == 1, f"dataset length mismatch across feature configs: {lengths}"
+    num_dialogues = lengths.pop()
 
     labels_all = []
-    probs_by_member = {name: [] for name in active}  # each entry: list of [utterances, NUM_CLASSES] tensors
+    probs_by_member = {name: [] for name in active}
 
     with torch.no_grad():
-        for i in range(len(roberta_dataset)):
-            sample_r = roberta_dataset[i]
-            audio = sample_r["audio"].unsqueeze(0).to(DEVICE, dtype=torch.float32)
-            video = sample_r["video"].unsqueeze(0).to(DEVICE, dtype=torch.float32)
-            speaker_slots = sample_r["speaker_slots"].unsqueeze(0).to(DEVICE, dtype=torch.long)
-            text_roberta = sample_r["text"].unsqueeze(0).to(DEVICE, dtype=torch.float32)
-            labels_all.extend(sample_r["labels"].tolist())
+        for i in range(num_dialogues):
+            samples = {cfg: ds[i] for cfg, ds in datasets.items()}
+            dialogue_ids = {s["dialogue_id"] for s in samples.values()}
+            assert len(dialogue_ids) == 1, f"dataset misalignment at index {i}: {dialogue_ids}"
 
-            text_distilbert = None
-            if distilbert_dataset is not None:
-                sample_d = distilbert_dataset[i]
-                assert sample_d["dialogue_id"] == sample_r["dialogue_id"], "dataset misalignment"
-                text_distilbert = sample_d["text"].unsqueeze(0).to(DEVICE, dtype=torch.float32)
+            reference = next(iter(samples.values()))
+            labels_all.extend(reference["labels"].tolist())
+            speaker_slots = reference["speaker_slots"].unsqueeze(0).to(DEVICE, dtype=torch.long)
+            video = reference["video"].unsqueeze(0).to(DEVICE, dtype=torch.float32)
 
             for name, model in models.items():
-                text = text_distilbert if name in USES_DISTILBERT else text_roberta
+                sample = samples[FEATURE_CONFIG[name]]
+                text = sample["text"].unsqueeze(0).to(DEVICE, dtype=torch.float32)
+                audio = sample["audio"].unsqueeze(0).to(DEVICE, dtype=torch.float32)
                 slots = speaker_slots if use_speaker[name] else None
                 logits = model(text, audio, video, speaker_slots=slots).reshape(-1, NUM_CLASSES)
                 probs_by_member[name].append(torch.softmax(logits, dim=-1))

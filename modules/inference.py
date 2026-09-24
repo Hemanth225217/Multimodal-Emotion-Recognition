@@ -22,17 +22,21 @@ def load_model(checkpoint_path, device=DEVICE):
     Returns (model, metadata) where metadata is the checkpoint's extra
     fields (val_accuracy, epoch, ...) if it was saved as a dict, else {}.
     """
-    model = MultimodalFusionModel(
-        text_dim=TEXT_DIM,
-        audio_dim=AUDIO_DIM,
-        video_dim=VIDEO_DIM,
-        num_classes=NUM_CLASSES,
-        num_speaker_slots=NUM_SPEAKER_SLOTS,
-    ).to(device)
-
     checkpoint = torch.load(checkpoint_path, map_location=device)
     state_dict = checkpoint["model_state_dict"] if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint else checkpoint
     metadata = {k: v for k, v in checkpoint.items() if k != "model_state_dict"} if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint else {}
+
+    # Dimensions come from the checkpoint's own metadata when available, not
+    # the current config -- e.g. checkpoints trained before the Wav2Vec2
+    # audio upgrade have audio_dim=300, while config.AUDIO_DIM is now 768.
+    # Falls back to config for older checkpoints saved without these fields.
+    model = MultimodalFusionModel(
+        text_dim=metadata.get("text_dim", TEXT_DIM),
+        audio_dim=metadata.get("audio_dim", AUDIO_DIM),
+        video_dim=metadata.get("video_dim", VIDEO_DIM),
+        num_classes=metadata.get("num_classes", NUM_CLASSES),
+        num_speaker_slots=metadata.get("num_speaker_slots", NUM_SPEAKER_SLOTS),
+    ).to(device)
 
     # strict=False: checkpoints saved before speaker_embedding was added to
     # the architecture won't have that key. It's safe to leave it at random
