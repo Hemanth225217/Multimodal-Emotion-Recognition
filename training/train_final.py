@@ -136,11 +136,10 @@ AUX_LOSS_WEIGHT = 0.3
 SENTIMENT_LOSS_WEIGHT = 0.0
 
 # Label smoothing on the main classification loss: a standard, near-free
-# regularizer, not yet tried in this project. Default 0.0 (off) so existing
-# runs are unaffected; set to e.g. 0.05-0.1 for the next experiment once
-# there's CPU time free to test it (currently busy with the Wav2Vec2 audio
-# extraction -- see modules/audio_features_wav2vec2.py).
-LABEL_SMOOTHING = 0.0
+# regularizer, not yet tried in this project. Testing the standard
+# literature default (0.1) against the best recipe (300-D audio, matching
+# checkpoint B) as a clean single-variable experiment.
+LABEL_SMOOTHING = 0.1
 
 NEUTRAL, SURPRISE, FEAR, SADNESS, JOY, DISGUST, ANGER = range(7)
 

@@ -71,7 +71,7 @@ class MELDDataset(Dataset):
         perfectly aligned.
     """
 
-    def __init__(self, split="train", text_path=None, use_legacy_audio=False):
+    def __init__(self, split="train", text_path=None, use_legacy_audio=True):
 
         super().__init__()
 
@@ -81,10 +81,11 @@ class MELDDataset(Dataset):
         # text_path overrides the default RoBERTa features -- used to build
         # a DistilBERT-aligned instance for ensembling with the older
         # DistilBERT-trained checkpoint (see modules.data_loader.load_features
-        # and evaluation/ensemble_test.py). use_legacy_audio=True loads the
-        # original 300-D audio instead of the Wav2Vec2 768-D features, for
-        # ensembling with checkpoints trained before that upgrade. Video/
-        # labels/speaker/sentiment alignment is identical in every case.
+        # and evaluation/ensemble_test.py). use_legacy_audio defaults to True
+        # (the original 300-D features) since the Wav2Vec2 768-D upgrade was
+        # tried and didn't beat it (see README "Results"); pass False to use
+        # Wav2Vec2 instead. Video/labels/speaker/sentiment alignment is
+        # identical either way.
         # ====================================================
 
         text_data, audio_data, emotion_data = load_features(text_path, use_legacy_audio)
