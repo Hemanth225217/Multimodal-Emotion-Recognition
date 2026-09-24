@@ -244,6 +244,25 @@ reasonably well-calibrated (temperatures close to 1), so there wasn't much
 for this to fix. Not pursued further; plain equal-weight averaging of the
 three members remains the best result.
 
+**The Wav2Vec2 audio upgrade: a mixed result solo, not a clean win.**
+Replaced the original MELD paper's 300-D openSMILE-style audio features
+with 768-D frozen Wav2Vec2-base embeddings (`modules/audio_features_wav2vec2.py`)
+-- extraction completed cleanly, 0 missing/failed across all 13,706
+utterances -- then retrained the exact best recipe (RoBERTa + aux losses +
+adaptive dropout + speaker embeddings) on it. Solo result: 62.49% accuracy /
+60.85% weighted F1 / 39.41% macro F1. Accuracy is flat versus the 300-D-audio
+version of this same recipe (62.45%), but weighted F1 and macro F1 are both
+*worse* (61.50% -> 60.85%, 42.74% -> 39.41%) -- Disgust collapsed to 0.0 F1
+and Fear dropped to 0.080. A genuinely stronger audio encoder did not
+translate into a better solo model here; plausibly the richer 768-D
+embedding needs more capacity/tuning in the audio encoder LSTM than a
+straight dimension swap gives it, or is simply harder for this architecture
+to use well on noisy, music-and-crosstalk-heavy TV-show audio. Reported
+honestly rather than declared a win because the extraction itself succeeded.
+Tested as a 5th ensemble member (E) anyway, since DistilBERT proved a weak
+solo score can still add real value through diversity -- see the ensemble
+table below for whether that held here too.
+
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
 on relative performance, differential graph attention, auxiliary unimodal

@@ -94,7 +94,7 @@ def load_original_text_features():
     return load_pickle("text_emotion.pkl")
 
 
-def load_features(text_path=None):
+def load_features(text_path=None, use_legacy_audio=False):
     """Load text, audio and emotion information from MELD.
 
     Text uses frozen RoBERTa-base embeddings by default (768-D, see
@@ -105,22 +105,31 @@ def load_features(text_path=None):
     closely as CPU-only extraction allows. Still pre-extracted, not
     fine-tuned end-to-end.
 
-    Audio uses frozen Wav2Vec2-base embeddings (768-D, see
+    Audio uses frozen Wav2Vec2-base embeddings by default (768-D, see
     modules/audio_features_wav2vec2.py), replacing the original MELD paper's
-    300-D openSMILE-style features (still reachable via
-    load_pickle("audio_emotion.pkl") for comparison).
+    300-D openSMILE-style features.
 
     text_path overrides which text pickle to load -- used to build a
     second, DistilBERT-aligned dataset instance for ensembling with the
     older DistilBERT-trained checkpoint (see evaluation/ensemble_test.py),
     without disturbing the default RoBERTa path every other caller relies on.
+
+    use_legacy_audio=True loads the original 300-D features instead --
+    needed to build a dataset instance for ensembling with checkpoints
+    trained before the Wav2Vec2 upgrade existed (B, C, D all used the
+    300-D audio; only a checkpoint trained after this upgrade needs the
+    768-D features).
     """
 
     with open(text_path or ROBERTA_TEXT_PATH, "rb") as file:
         text_features = pickle.load(file)
 
-    with open(WAV2VEC2_AUDIO_PATH, "rb") as file:
-        audio_features = pickle.load(file)
+    if use_legacy_audio:
+        audio_features = load_pickle("audio_emotion.pkl")
+    else:
+        with open(WAV2VEC2_AUDIO_PATH, "rb") as file:
+            audio_features = pickle.load(file)
+
     emotion_data = load_pickle("data_emotion.p")
 
     return text_features, audio_features, emotion_data
