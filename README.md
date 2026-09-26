@@ -278,6 +278,29 @@ crashed loading any pre-upgrade checkpoint (300-D audio) with a state_dict
 size mismatch. Fixed by reading dimensions from each checkpoint's own saved
 metadata first, falling back to config only when absent.
 
+**Label smoothing (0.1, the standard default): another regression, both
+minority classes collapsed.** Tested against the true best recipe (300-D
+audio, matching checkpoint B) as a clean single-variable change. Result:
+60.42% accuracy / 59.70% weighted F1 / 37.99% macro F1 -- worse than B
+(62.45%/61.50%/42.74%) on every metric, with **both** Fear and Disgust at
+0.0 F1. This recipe already leans on focal loss, heavy class weights, and
+auxiliary losses to protect minority classes; softening the main loss's
+target distribution on top of that apparently blunts exactly the signal
+those mechanisms need, rather than adding the mild, mostly-harmless
+regularization label smoothing usually provides. Reverted (`LABEL_SMOOTHING`
+back to 0.0); log kept as
+`logs/train_final_run17_labelsmoothing0.1_REGRESSION_59.70wf1.log`.
+
+**Pattern worth noting:** every attempt this session to modify the loss
+function or attention mechanism directly on top of the best recipe --
+speaker-relational bias (twice), sentiment loss (twice), label smoothing --
+has regressed at least one minority class to 0.0 F1. The changes that
+*did* work (RoBERTa text, speaker embeddings, ensembling) all added new
+information or genuinely different models rather than reshaping how the
+existing loss treats existing classes. This recipe's minority-class balance
+looks more fragile to loss-level perturbation than to architectural
+additions.
+
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
 on relative performance, differential graph attention, auxiliary unimodal

@@ -135,11 +135,15 @@ AUX_LOSS_WEIGHT = 0.3
 # under a different seed, for ensembling (evaluation/ensemble_test.py).
 SENTIMENT_LOSS_WEIGHT = 0.0
 
-# Label smoothing on the main classification loss: a standard, near-free
-# regularizer, not yet tried in this project. Testing the standard
-# literature default (0.1) against the best recipe (300-D audio, matching
-# checkpoint B) as a clean single-variable experiment.
-LABEL_SMOOTHING = 0.1
+# Label smoothing on the main classification loss: tested at the standard
+# literature default (0.1) against the best recipe -- regressed every
+# metric (62.45/61.50/42.74 -> 60.42/59.70/37.99) and collapsed Fear AND
+# Disgust to 0.0 F1 (see README "Results"). Reverted to 0.0. This recipe's
+# minority-class handling already leans on focal loss + heavy class weights
+# + auxiliary losses; softening the main loss's targets on top of that
+# seems to blunt exactly the signal those mechanisms depend on, rather than
+# just adding mild regularization the way it usually does.
+LABEL_SMOOTHING = 0.0
 
 NEUTRAL, SURPRISE, FEAR, SADNESS, JOY, DISGUST, ANGER = range(7)
 
