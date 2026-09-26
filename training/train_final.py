@@ -41,10 +41,14 @@ abstract:
      the fused output.
   4. Adaptive (not fixed) modality dropout: AMB-DSGDN computes a per-modality
      dropout probability from that modality's relative performance each
-     batch. We adapt the same idea at epoch granularity using the auxiliary
-     heads' accuracy as the performance signal -- whichever modality is
-     currently strongest gets dropped more, the weakest less -- rather than
-     the fixed 40/15/15 split used in the previous version.
+     batch, using the auxiliary heads' accuracy as the performance signal --
+     whichever modality is currently strongest gets dropped more, the
+     weakest less. Originally approximated at epoch granularity (recompute
+     once per epoch) for simplicity; now matches AMB-DSGDN's actual
+     per-batch granularity via an EMA of each modality's aux accuracy
+     updated after every training step (BATCH_DROPOUT_EMA_DECAY), so
+     dropout probabilities evolve continuously through training rather than
+     jumping once at each epoch boundary.
 
 This version also adds speaker-aware context: a learned embedding for each
 utterance's dialogue-relative speaker slot (config.NUM_SPEAKER_SLOTS), added
@@ -119,7 +123,14 @@ BASE_DROPOUT_PROB = 0.15
 DROPOUT_SCALE = 0.50
 MIN_DROPOUT_PROB = 0.05
 MAX_DROPOUT_PROB = 0.55
-DROPOUT_EMA_DECAY = 0.6  # smooths updates against the previous epoch's probs
+DROPOUT_EMA_DECAY = 0.6  # smooths updates against the previous epoch's probs (legacy epoch-level path, unused now that BATCH_DROPOUT_EMA_DECAY drives every step)
+
+# Per-batch adaptive dropout (matches AMB-DSGDN's actual granularity):
+# decay for the per-step EMA of each modality's auxiliary-head accuracy.
+# Each training step is one whole dialogue (10-15 utterances on average),
+# not a single example, so a fast-ish decay still reacts to a reasonably
+# sized sample rather than pure per-utterance noise.
+BATCH_DROPOUT_EMA_DECAY = 0.98
 
 # Weight on the summed auxiliary unimodal losses (added to the main loss).
 AUX_LOSS_WEIGHT = 0.3
@@ -268,7 +279,7 @@ def modality_weight_cap_penalty(modality_weights, max_weight=MAX_MODALITY_WEIGHT
     return excess.sum(dim=-1).mean()
 
 
-def run_epoch(model, loader, criterion, optimizer=None, dropout_probs=None):
+def run_epoch(model, loader, criterion, optimizer=None, dropout_probs=None, ema_aux_accuracy=None):
     train_mode = optimizer is not None
     model.train(train_mode)
 
@@ -298,11 +309,30 @@ def run_epoch(model, loader, criterion, optimizer=None, dropout_probs=None):
             cap_penalty = modality_weight_cap_penalty(modality_weights)
 
             aux_loss = 0.0
+            step_aux_preds = {}
             for modality, modality_logits in aux_logits.items():
                 modality_logits = modality_logits.reshape(-1, NUM_CLASSES)
                 aux_loss = aux_loss + nn.functional.cross_entropy(modality_logits, labels)
-                aux_preds[modality].extend(torch.argmax(modality_logits, dim=1).detach().cpu().tolist())
+                step_preds = torch.argmax(modality_logits, dim=1).detach().cpu().tolist()
+                aux_preds[modality].extend(step_preds)
+                step_aux_preds[modality] = step_preds
             aux_loss = aux_loss / len(aux_logits)
+
+            # Per-batch adaptive dropout (AMB-DSGDN's actual granularity --
+            # the earlier version of this recipe only updated once per
+            # epoch). An EMA of each modality's auxiliary-head accuracy,
+            # updated after every training step using that step's dialogue
+            # (usually 10-15 utterances, not a single noisy example), drives
+            # dropout_probs continuously rather than waiting a full epoch.
+            if train_mode and ema_aux_accuracy is not None:
+                step_labels = labels.detach().cpu().tolist()
+                for modality, preds in step_aux_preds.items():
+                    step_acc = accuracy_score(step_labels, preds)
+                    ema_aux_accuracy[modality] = (
+                        BATCH_DROPOUT_EMA_DECAY * ema_aux_accuracy[modality]
+                        + (1 - BATCH_DROPOUT_EMA_DECAY) * step_acc
+                    )
+                dropout_probs.update(update_dropout_probs(dropout_probs, ema_aux_accuracy))
 
             sentiment_loss = nn.functional.cross_entropy(sentiment_logits, sentiment_labels)
 
@@ -398,21 +428,30 @@ def main():
     patience_counter = 0
     start_time = time.time()
     dropout_probs = dict(INITIAL_DROPOUT_PROBS)
+    # Neutral starting point for the per-batch EMA (see BATCH_DROPOUT_EMA_DECAY);
+    # this dict is mutated in place inside run_epoch and carries across epochs,
+    # so dropout adapts continuously through training, not just at epoch
+    # boundaries.
+    ema_aux_accuracy = {"text": 0.5, "audio": 0.5, "video": 0.5}
 
     for epoch in range(1, EPOCHS + 1):
         epoch_start = time.time()
         print(f"\n{'=' * 70}\nEPOCH {epoch}/{EPOCHS}  (lr={optimizer.param_groups[0]['lr']:.6f})\n{'=' * 70}")
         print(
-            "dropout probs: "
+            "dropout probs (start of epoch, evolves per-batch during training): "
             + ", ".join(f"{m}={p:.0%}" for m, p in dropout_probs.items())
         )
 
         probs_used_this_epoch = dict(dropout_probs)
-        train_metrics, _, _ = run_epoch(model, train_loader, criterion, optimizer, dropout_probs)
+        train_metrics, _, _ = run_epoch(
+            model, train_loader, criterion, optimizer, dropout_probs, ema_aux_accuracy
+        )
         val_metrics, val_labels, val_preds = run_epoch(model, val_loader, criterion)
         scheduler.step(val_metrics["weighted_f1"])
 
-        dropout_probs = update_dropout_probs(dropout_probs, train_metrics["aux_accuracy"])
+        # dropout_probs was already updated continuously, per training step,
+        # inside run_epoch above (see BATCH_DROPOUT_EMA_DECAY) -- no separate
+        # end-of-epoch update needed.
 
         epoch_time = time.time() - epoch_start
         aux_acc_str = ", ".join(f"{m}={a:.4f}" for m, a in train_metrics["aux_accuracy"].items())
