@@ -83,6 +83,7 @@ sympy==1.14.0
 threadpoolctl==3.6.0
 tokenizers==0.22.2
 torch==2.13.0
+torch_geometric==2.8.0.post1
 torchaudio==2.11.0
 torchcodec==0.15.0
 torchvision==0.28.0

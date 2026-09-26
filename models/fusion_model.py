@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 
+from models.graph_fusion import GraphFusionLayer
+
 
 class MultimodalFusionModel(nn.Module):
 
@@ -30,21 +32,22 @@ class MultimodalFusionModel(nn.Module):
         self.speaker_embedding = nn.Embedding(num_speaker_slots, hidden_dim)
 
         # ============================================================
-        # SPEAKER-RELATIONAL ATTENTION BIAS
+        # GRAPH ATTENTION FUSION (models/graph_fusion.py)
         #
-        # A cheap, CPU-feasible stand-in for the explicit speaker-relation
-        # graphs used by DialogueRNN/DialogueGCN-style models (and the
-        # graph structure at the core of AMB-DSGDN): two learned scalars,
-        # added to the dialogue context attention's scores depending on
-        # whether the query/key utterance pair share a speaker. This lets
-        # attention learn "weigh this speaker's own earlier lines
-        # differently from someone else's" without building an actual
-        # graph-conv layer. Skipped (no bias) when speaker_slots is None,
-        # same as the speaker embedding above.
+        # Replaces an earlier attempt at cheap speaker-relational modeling
+        # (two learned scalar biases added to attention scores), which
+        # collapsed Fear and Disgust to 0.0 F1 in two independent tests and
+        # was disabled. This is the real version: a proper graph over
+        # (utterance, modality) nodes with cross-modal, temporal, and
+        # same-speaker edges, processed with graph attention (GATConv) --
+        # our approximation of AMB-DSGDN's dynamic semantic graph
+        # differential network. See models/graph_fusion.py for the full
+        # design rationale. Applied after cross-modal attention, enriching
+        # all three modalities before adaptive weighting; skipped (returns
+        # inputs unchanged) when speaker_slots is None.
         # ============================================================
 
-        self.same_speaker_bias = nn.Parameter(torch.zeros(1))
-        self.diff_speaker_bias = nn.Parameter(torch.zeros(1))
+        self.graph_fusion = GraphFusionLayer(hidden_dim=hidden_dim)
 
         # ============================================================
         # TEXT ENCODER
@@ -453,6 +456,21 @@ class MultimodalFusionModel(nn.Module):
         )
 
         # ============================================================
+        # GRAPH ATTENTION FUSION
+        #
+        # Enriches all three modalities using the dialogue-level graph
+        # (cross-modal + temporal + same-speaker edges) before adaptive
+        # weighting. Skipped when speaker_slots is None (matches every
+        # other speaker-dependent component in this model).
+        # ============================================================
+
+        if speaker_slots is not None:
+
+            text_feature, audio_feature, video_feature = self.graph_fusion(
+                text_feature, audio_feature, video_feature, speaker_slots
+            )
+
+        # ============================================================
         # COMBINE MODALITIES FOR WEIGHT PREDICTION
         # ============================================================
 
@@ -566,8 +584,6 @@ class MultimodalFusionModel(nn.Module):
         # graph architecture. Skipped entirely if speaker_slots is None.
         # ============================================================
 
-        context_attn_bias = None
-
         if speaker_slots is not None:
 
             speaker_embed = self.speaker_embedding(
@@ -576,28 +592,6 @@ class MultimodalFusionModel(nn.Module):
 
             fused = fused + speaker_embed
 
-            # --------------------------------------------------
-            # Speaker-relational attention bias (see __init__).
-            # Assumes batch_size=1 (true at every call site in this
-            # repo -- dialogues have variable utterance counts and
-            # there's no padding/collate_fn), so the bias matrix is
-            # built from the single dialogue's speaker slots and
-            # broadcasts across attention heads via the unbatched
-            # (L, S) attn_mask form.
-            # --------------------------------------------------
-
-            speaker_ids = speaker_slots[0]
-
-            same_speaker = (
-                speaker_ids.unsqueeze(0) == speaker_ids.unsqueeze(1)
-            )
-
-            context_attn_bias = torch.where(
-                same_speaker,
-                self.same_speaker_bias,
-                self.diff_speaker_bias
-            )
-
         # ============================================================
         # DIALOGUE CONTEXT ATTENTION
         # ============================================================
@@ -605,14 +599,7 @@ class MultimodalFusionModel(nn.Module):
         context_output, _ = self.context_attention(
             query=fused,
             key=fused,
-            value=fused,
-            # TEMPORARILY not applying context_attn_bias here: two runs with
-            # it enabled (with and without the sentiment loss) both collapsed
-            # Fear and Disgust to 0.0 F1, even though the learned bias values
-            # were tiny (+/-0.03) -- see README "Results". Isolating the
-            # sentiment loss alone next with this mechanism disabled, rather
-            # than deleting a possibly-salvageable idea outright.
-            attn_mask=None
+            value=fused
         )
 
         fused = self.context_norm(
