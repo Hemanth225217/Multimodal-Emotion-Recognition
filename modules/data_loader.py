@@ -70,6 +70,21 @@ def load_speaker_lookup(split):
     }
 
 
+def load_utterance_lookup(split):
+    """Maps (dialogue_id, utterance_id) -> raw utterance text for one split.
+
+    Used for end-to-end text fine-tuning (training/train_finetune.py) --
+    unlike every other text pipeline in this project, which reads a frozen,
+    pre-extracted embedding, fine-tuning needs the actual sentence so it can
+    be tokenized and run through a trainable encoder each step.
+    """
+    df = pd.read_csv(MELD_CSV_DIR / SPEAKER_CSV_FILES[split])
+    return {
+        (int(row.Dialogue_ID), int(row.Utterance_ID)): str(row.Utterance)
+        for row in df.itertuples()
+    }
+
+
 def load_sentiment_lookup(split):
     """Maps (dialogue_id, utterance_id) -> sentiment string for one split.
 
