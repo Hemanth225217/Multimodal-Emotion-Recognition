@@ -499,6 +499,7 @@ def main():
                     "num_classes": NUM_CLASSES,
                     "num_speaker_slots": NUM_SPEAKER_SLOTS,
                     "num_sentiment_classes": NUM_SENTIMENT_CLASSES,
+                    "use_graph_fusion": USE_GRAPH_FUSION,
                     "emotion_names": EMOTION_NAMES,
                     "training_config": {
                         "learning_rate": LEARNING_RATE,
@@ -508,8 +509,8 @@ def main():
                         "strategy": (
                             "single-stage adaptive fusion, moderate class weighting, gentle focal loss, "
                             "adaptive modality dropout, modality-weight cap penalty, auxiliary unimodal losses, "
-                            "dialogue-relative speaker embedding, speaker-relational attention bias, "
-                            "sentiment auxiliary loss"
+                            "dialogue-relative speaker embedding, sentiment auxiliary loss"
+                            + (", graph attention fusion" if USE_GRAPH_FUSION else "")
                         ),
                         "modality_dropout_probs_this_epoch": probs_used_this_epoch,
                         "max_modality_weight": MAX_MODALITY_WEIGHT,

@@ -30,12 +30,23 @@ def load_model(checkpoint_path, device=DEVICE):
     # the current config -- e.g. checkpoints trained before the Wav2Vec2
     # audio upgrade have audio_dim=300, while config.AUDIO_DIM is now 768.
     # Falls back to config for older checkpoints saved without these fields.
+    #
+    # use_graph_fusion defaults to False (NOT the model's own True default)
+    # when absent from metadata -- every checkpoint saved before this field
+    # was added either predates the graph fusion layer entirely (no trained
+    # weights for it) or was one of the two runs trained with it explicitly
+    # on/off before this field existed. False reproduces what those
+    # checkpoints actually saw during training; defaulting to True would
+    # silently route them through a randomly-initialized graph layer they
+    # were never trained with, corrupting evaluation (this exact bug
+    # affected an earlier ensemble sweep -- see README "Results").
     model = MultimodalFusionModel(
         text_dim=metadata.get("text_dim", TEXT_DIM),
         audio_dim=metadata.get("audio_dim", AUDIO_DIM),
         video_dim=metadata.get("video_dim", VIDEO_DIM),
         num_classes=metadata.get("num_classes", NUM_CLASSES),
         num_speaker_slots=metadata.get("num_speaker_slots", NUM_SPEAKER_SLOTS),
+        use_graph_fusion=metadata.get("use_graph_fusion", False),
     ).to(device)
 
     # strict=False: checkpoints saved before speaker_embedding was added to
