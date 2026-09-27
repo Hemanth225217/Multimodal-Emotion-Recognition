@@ -61,6 +61,7 @@ CHECKPOINT_PATHS = {
     "D": env_path("ENSEMBLE_CKPT_D"),
     "E": env_path("ENSEMBLE_CKPT_E"),
     "F": env_path("ENSEMBLE_CKPT_F"),
+    "G": env_path("ENSEMBLE_CKPT_G"),
 }
 
 # (text_path, use_legacy_audio) each member's checkpoint was trained on.
@@ -75,6 +76,7 @@ FEATURE_CONFIG = {
     "D": (DISTILBERT_TEXT_PATH, True),
     "E": (ROBERTA_TEXT_PATH, False),
     "F": (ROBERTA_LARGE_TEXT_PATH, True),
+    "G": (ROBERTA_LARGE_TEXT_PATH, True),
 }
 
 

@@ -389,6 +389,29 @@ the closest this project has been all session**, down from ~5 points at
 the start. Full sweep (16 combinations across A/B/C/D/F) in
 `logs/ensemble_test_output.log`.
 
+**GPU training pipeline stood up on Kaggle, validated end-to-end.** Set up
+a full CLI-driven pipeline (Kaggle account, API token, a packaged 269MB
+feature dataset, and a training kernel that clones this repo and runs
+`training/train_final.py` unchanged -- it already auto-detects CUDA via
+`config.DEVICE`, no code changes needed). Took three iterations to get the
+kernel's data-loading right (see git history for the specific bugs -- wrong
+assumptions about how Kaggle mounts an uploaded dataset), but the training
+itself needed zero changes. Confirmed real speedup: **8.3 minutes total,
+~23s/epoch on a Tesla T4, versus 45-180+ seconds/epoch on CPU** -- roughly
+a 5-8x wall-clock improvement. Tested the resulting checkpoint (G, same
+RoBERTa-large recipe as F) both solo (60.00%/59.98%/42.36%, genuinely
+different from F despite identical code and seed -- GPU training isn't
+bit-exact reproducible, same as how different CPU seeds diverge) and as an
+8th ensemble candidate: **it doesn't beat B+D+F in any combination**, same
+pattern as the seed-43/44 variants -- confirms again that same-recipe
+diversity (whether from a different seed or different hardware) isn't
+enough for ensembling here, only genuinely different architectures/features
+are. The pipeline itself remains available and now iterates 5-8x faster,
+which matters most for trying something that needs many fast iterations
+(e.g. redesigning the graph fusion layer with room to actually debug it, or
+attempting real end-to-end fine-tuning) rather than for re-running the
+existing recipe under different randomness.
+
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
 on relative performance, differential graph attention, auxiliary unimodal
