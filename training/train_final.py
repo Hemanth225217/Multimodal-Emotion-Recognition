@@ -146,6 +146,14 @@ AUX_LOSS_WEIGHT = 0.3
 # under a different seed, for ensembling (evaluation/ensemble_test.py).
 SENTIMENT_LOSS_WEIGHT = 0.0
 
+# Toggle for models.graph_fusion.GraphFusionLayer. RoBERTa-large + graph
+# fusion together collapsed Fear and Disgust to 0.0 F1 (run19) -- same
+# failure signature as the earlier scalar relational-bias attempts. Set to
+# False here to isolate RoBERTa-large alone and find out whether the graph
+# layer is the culprit, per the same discipline used for the earlier
+# relational-bias + sentiment-loss regression.
+USE_GRAPH_FUSION = False
+
 # Label smoothing on the main classification loss: tested at the standard
 # literature default (0.1) against the best recipe -- regressed every
 # metric (62.45/61.50/42.74 -> 60.42/59.70/37.99) and collapsed Fear AND
@@ -394,7 +402,7 @@ def main():
     print(f"Modality-weight cap: penalty {CAP_PENALTY_WEIGHT}x for any weight above {MAX_MODALITY_WEIGHT:.0%}")
     print(f"Auxiliary unimodal loss weight: {AUX_LOSS_WEIGHT}")
     print(f"Sentiment auxiliary loss weight: {SENTIMENT_LOSS_WEIGHT}")
-    print("Graph attention fusion: enabled (cross-modal + temporal + same-speaker edges, see models/graph_fusion.py)")
+    print(f"Graph attention fusion: {'enabled' if USE_GRAPH_FUSION else 'DISABLED for this run'} (cross-modal + temporal + same-speaker edges, see models/graph_fusion.py)")
     print("=" * 70)
 
     train_dataset = MELDDataset(split="train")
@@ -408,6 +416,7 @@ def main():
     model = MultimodalFusionModel(
         text_dim=TEXT_DIM, audio_dim=AUDIO_DIM, video_dim=VIDEO_DIM, num_classes=NUM_CLASSES,
         num_speaker_slots=NUM_SPEAKER_SLOTS, num_sentiment_classes=NUM_SENTIMENT_CLASSES,
+        use_graph_fusion=USE_GRAPH_FUSION,
     ).to(DEVICE)
     total_params = sum(p.numel() for p in model.parameters())
     print(f"\nModel parameters: {total_params:,}")

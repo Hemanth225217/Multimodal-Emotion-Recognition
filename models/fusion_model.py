@@ -14,10 +14,13 @@ class MultimodalFusionModel(nn.Module):
         hidden_dim=256,
         num_classes=7,
         num_speaker_slots=10,
-        num_sentiment_classes=3
+        num_sentiment_classes=3,
+        use_graph_fusion=True
     ):
 
         super().__init__()
+
+        self.use_graph_fusion = use_graph_fusion
 
         self.hidden_dim = hidden_dim
 
@@ -464,7 +467,7 @@ class MultimodalFusionModel(nn.Module):
         # other speaker-dependent component in this model).
         # ============================================================
 
-        if speaker_slots is not None:
+        if speaker_slots is not None and self.use_graph_fusion:
 
             text_feature, audio_feature, video_feature = self.graph_fusion(
                 text_feature, audio_feature, video_feature, speaker_slots

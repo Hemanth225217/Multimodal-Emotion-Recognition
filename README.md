@@ -311,6 +311,29 @@ F1), still a net loss, so reverted. Faster-reacting dropout apparently
 isn't the bottleneck here; log kept as
 `logs/train_final_run18_perbatch_dropout_60.62wf1.log`.
 
+**RoBERTa-large + graph attention fusion, tested together: a real attempt
+at the two biggest architectural gaps, and a real regression.** Extracted
+frozen RoBERTa-large (1024-D, matching AMB-DSGDN's actual text encoder,
+`modules/text_features_roberta_large.py`) and built a genuine graph-based
+relational mechanism (`models/graph_fusion.py`, using `torch_geometric`'s
+GATConv over a per-dialogue graph with cross-modal, temporal, and
+same-speaker edges) to replace the earlier scalar relational-bias hack.
+Both were smoke-tested thoroughly (edge construction checked by hand,
+gradients confirmed flowing, old-checkpoint backward compatibility
+confirmed) before trusting them with training time. Tested together first,
+given a real week of runway rather than the 2 days available when the bias
+version was tried: 61.11% accuracy / 60.08% weighted F1 / 38.22% macro F1
+-- worse than the best (62.45%/61.50%/42.74%) on every metric, and **Fear
+and Disgust both collapsed to 0.0 F1 again** -- the exact same failure
+signature as the scalar relational-bias attempts, despite a completely
+different (and far more expressive) mechanism for encoding speaker
+relationships. Reverted; log kept as
+`logs/train_final_run19_robertalarge_graphfusion_REGRESSION_60.08wf1.log`.
+Added a `USE_GRAPH_FUSION` toggle to `train_final.py` and are isolating
+RoBERTa-large alone next, to find out whether the graph layer specifically
+is responsible (as the repeated failure signature suggests) or whether it's
+an interaction with the larger text encoder.
+
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
 on relative performance, differential graph attention, auxiliary unimodal
