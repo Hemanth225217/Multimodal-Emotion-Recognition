@@ -301,6 +301,16 @@ existing loss treats existing classes. This recipe's minority-class balance
 looks more fragile to loss-level perturbation than to architectural
 additions.
 
+**Per-batch adaptive dropout (matching AMB-DSGDN's actual per-batch
+granularity, not our earlier epoch-level approximation): a net loss, but no
+collapse this time.** 61.65% accuracy / 60.62% weighted F1 / 43.39% macro
+F1 -- worse than the best (62.45%/61.50%) on accuracy and weighted F1,
+slightly better on macro F1, and every class stayed non-zero (Fear 0.239,
+close to the best ever). Under this project's own selection rule (weighted
+F1), still a net loss, so reverted. Faster-reacting dropout apparently
+isn't the bottleneck here; log kept as
+`logs/train_final_run18_perbatch_dropout_60.62wf1.log`.
+
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
 on relative performance, differential graph attention, auxiliary unimodal
