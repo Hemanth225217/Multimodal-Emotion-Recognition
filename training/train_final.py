@@ -394,7 +394,7 @@ def main():
     print(f"Modality-weight cap: penalty {CAP_PENALTY_WEIGHT}x for any weight above {MAX_MODALITY_WEIGHT:.0%}")
     print(f"Auxiliary unimodal loss weight: {AUX_LOSS_WEIGHT}")
     print(f"Sentiment auxiliary loss weight: {SENTIMENT_LOSS_WEIGHT}")
-    print("Speaker-relational attention bias: enabled (same-speaker vs different-speaker learned scalars)")
+    print("Graph attention fusion: enabled (cross-modal + temporal + same-speaker edges, see models/graph_fusion.py)")
     print("=" * 70)
 
     train_dataset = MELDDataset(split="train")
