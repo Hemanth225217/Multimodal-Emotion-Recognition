@@ -18,10 +18,11 @@ SPEAKER_CSV_FILES = {
     "test": "test_sent_emo.csv",
 }
 
-# Frozen text embeddings, tried in this order (both replace the original
+# Frozen text embeddings, tried in this order (all replace the original
 # 600-D task-specific CNN text features from the MELD paper's release):
 DISTILBERT_TEXT_PATH = PROJECT_ROOT / "meld_features" / "text_distilbert" / "text_distilbert.pkl"
 ROBERTA_TEXT_PATH = PROJECT_ROOT / "meld_features" / "text_roberta" / "text_roberta.pkl"
+ROBERTA_LARGE_TEXT_PATH = PROJECT_ROOT / "meld_features" / "text_roberta_large" / "text_roberta_large.pkl"
 
 # Frozen audio embeddings (see modules/audio_features_wav2vec2.py), replacing
 # the original MELD paper's 300-D openSMILE-style features.
@@ -97,13 +98,14 @@ def load_original_text_features():
 def load_features(text_path=None, use_legacy_audio=True):
     """Load text, audio and emotion information from MELD.
 
-    Text uses frozen RoBERTa-base embeddings by default (768-D, see
-    modules/text_features_roberta.py) -- tried after DistilBERT
-    (modules/text_features_distilbert.py, still available via
-    DISTILBERT_TEXT_PATH) as a stronger pretraining recipe at a similar
-    size, in pursuit of matching AMB-DSGDN's RoBERTa-large text encoder as
-    closely as CPU-only extraction allows. Still pre-extracted, not
-    fine-tuned end-to-end.
+    Text uses frozen RoBERTa-large embeddings by default (1024-D, see
+    modules/text_features_roberta_large.py) -- matches AMB-DSGDN's actual
+    text encoder size. Tried after RoBERTa-base (768-D, still available via
+    ROBERTA_TEXT_PATH) and DistilBERT (768-D, DISTILBERT_TEXT_PATH), which
+    were used first because RoBERTa-large's ~355M parameters and ~1.4GB
+    download were judged too expensive to risk earlier in the project, when
+    the timeline was a couple of days rather than a week. Still
+    pre-extracted, not fine-tuned end-to-end.
 
     Audio uses the original MELD paper's 300-D openSMILE-style features by
     default. A frozen Wav2Vec2-base upgrade (768-D, see
@@ -119,7 +121,7 @@ def load_features(text_path=None, use_legacy_audio=True):
     without disturbing the default RoBERTa path every other caller relies on.
     """
 
-    with open(text_path or ROBERTA_TEXT_PATH, "rb") as file:
+    with open(text_path or ROBERTA_LARGE_TEXT_PATH, "rb") as file:
         text_features = pickle.load(file)
 
     if use_legacy_audio:

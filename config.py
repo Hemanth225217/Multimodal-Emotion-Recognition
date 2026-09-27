@@ -24,10 +24,11 @@ MELD_ANNOTATIONS_DIR = PROJECT_ROOT / "meld_dataset" / "raw"
 # Model dimensions (fixed by the pre-extracted MELD baseline features)
 # --------------------------------------------------------------------------
 
-# TEXT_DIM is 768 -- frozen RoBERTa-base (modules/text_features_roberta.py),
-# tried after DistilBERT (also 768-D), rather than the original MELD paper's
-# 600-D task-specific CNN features.
-TEXT_DIM = 768
+# TEXT_DIM is 1024 -- frozen RoBERTa-large (modules/text_features_roberta_large.py),
+# matching AMB-DSGDN's actual text encoder size. Tried after RoBERTa-base
+# and DistilBERT (both 768-D), which were tried after the original MELD
+# paper's 600-D task-specific CNN features.
+TEXT_DIM = 1024
 # AUDIO_DIM is 300 -- the original MELD paper's openSMILE-style features.
 # Frozen Wav2Vec2-base (768-D, modules/audio_features_wav2vec2.py) was tried
 # as an upgrade and tested thoroughly (solo and as a 5th ensemble member in
