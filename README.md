@@ -329,10 +329,28 @@ signature as the scalar relational-bias attempts, despite a completely
 different (and far more expressive) mechanism for encoding speaker
 relationships. Reverted; log kept as
 `logs/train_final_run19_robertalarge_graphfusion_REGRESSION_60.08wf1.log`.
-Added a `USE_GRAPH_FUSION` toggle to `train_final.py` and are isolating
-RoBERTa-large alone next, to find out whether the graph layer specifically
-is responsible (as the repeated failure signature suggests) or whether it's
-an interaction with the larger text encoder.
+Added a `USE_GRAPH_FUSION` toggle to `train_final.py` to isolate the two.
+
+**Isolation result: RoBERTa-large alone is a genuinely mixed result, and
+confirms the graph layer is the more likely culprit.** With
+`USE_GRAPH_FUSION=False`: 63.83% accuracy / 61.10% weighted F1 / 39.61%
+macro F1. Accuracy is the **best of any single model this entire session**
+(+1.38 over the previous best, 62.45%), weighted F1 is essentially flat
+(-0.40, within noise), and only **Disgust** collapsed to 0.0 F1 -- Fear
+survived at 0.135. That's a meaningfully different (and much less severe)
+failure than the combined run, where *both* Fear and Disgust hit exactly
+0.0 -- strong evidence the graph fusion layer, not the larger text encoder,
+is the primary driver of the double-collapse. Under this project's
+weighted-F1 selection rule this is technically still a marginal net loss,
+so it wasn't promoted to `models/final_model.pt`, but the accuracy gain and
+distinctly different error pattern (predicts neutral far more often --
+59.8% of test utterances vs. the usual ~48-50%) made it worth keeping as a
+6th ensemble candidate rather than discarding; log kept as
+`logs/train_final_run20_robertalarge_alone_61.10wf1.log`. The graph fusion
+layer itself remains disabled and not otherwise pursued further this
+session -- two failed relational-modeling mechanisms (a scalar bias, now a
+real graph) is a strong enough signal that the problem is structural to
+this architecture's fused representation, not either implementation.
 
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
