@@ -111,7 +111,7 @@ weighting, gentle focal loss, adaptive modality dropout, a modality-weight
 cap penalty, and auxiliary unimodal losses (see the modality-collapse note
 above for the dropout/cap history), trained on frozen RoBERTa-base text
 features (see below). Checkpoint selection uses validation **weighted F1**,
-not macro F1. Full run: `logs/train_final.log` (all twelve superseded
+not macro F1. Full run: `logs/train_final.log` (all twenty superseded
 attempts kept as `logs/train_final_run*.log` for the record, regressions
 included).
 
@@ -126,7 +126,13 @@ included).
 | ~~+ speaker-relational attn bias + sentiment loss~~ | ~~61.57%~~ | ~~60.23%~~ | ~~38.41%~~ |
 | ~~+ speaker-relational attn bias alone~~ | ~~60.77%~~ | ~~59.84%~~ | ~~37.97%~~ |
 | ~~+ sentiment auxiliary loss alone (bias off)~~ | ~~61.95%~~ | ~~60.13%~~ | ~~41.30%~~ |
-| **Ensemble: RoBERTa (no speaker) + RoBERTa+speaker, avg softmax** | **63.18%** | **62.45%** | **45.38%** |
+| Ensemble: RoBERTa (no speaker) + RoBERTa+speaker, avg softmax | 63.18% | 62.45% | 45.38% |
+| Ensemble: + DistilBERT (B+C+D, seed variant + DistilBERT) | 64.56% | 63.60% | **46.01%** |
+| **Ensemble: B + DistilBERT + RoBERTa-large (B+D+F)** | **65.56%** | **63.90%** | 44.57% |
+
+The current best (bolded) is a 3-member ensemble; see "Base paper
+comparison" below for the full path there, including a real bug that was
+caught and fixed along the way.
 
 The bolded row is the current model. Speaker-aware modeling is the first
 change this session to move accuracy meaningfully (+1.49 points) rather than
@@ -333,24 +339,55 @@ Added a `USE_GRAPH_FUSION` toggle to `train_final.py` to isolate the two.
 
 **Isolation result: RoBERTa-large alone is a genuinely mixed result, and
 confirms the graph layer is the more likely culprit.** With
-`USE_GRAPH_FUSION=False`: 63.83% accuracy / 61.10% weighted F1 / 39.61%
-macro F1. Accuracy is the **best of any single model this entire session**
-(+1.38 over the previous best, 62.45%), weighted F1 is essentially flat
-(-0.40, within noise), and only **Disgust** collapsed to 0.0 F1 -- Fear
-survived at 0.135. That's a meaningfully different (and much less severe)
-failure than the combined run, where *both* Fear and Disgust hit exactly
-0.0 -- strong evidence the graph fusion layer, not the larger text encoder,
-is the primary driver of the double-collapse. Under this project's
-weighted-F1 selection rule this is technically still a marginal net loss,
-so it wasn't promoted to `models/final_model.pt`, but the accuracy gain and
-distinctly different error pattern (predicts neutral far more often --
-59.8% of test utterances vs. the usual ~48-50%) made it worth keeping as a
-6th ensemble candidate rather than discarding; log kept as
-`logs/train_final_run20_robertalarge_alone_61.10wf1.log`. The graph fusion
-layer itself remains disabled and not otherwise pursued further this
-session -- two failed relational-modeling mechanisms (a scalar bias, now a
-real graph) is a strong enough signal that the problem is structural to
-this architecture's fused representation, not either implementation.
+`USE_GRAPH_FUSION=False`: 63.41% accuracy / 60.85% weighted F1 / 39.17%
+macro F1 (see bug note below -- these are the corrected numbers). Accuracy
+is the **best of any single model this entire session** (+0.96 over the
+previous best, 62.45%), weighted F1 is close (-0.65), and only **Disgust**
+collapsed to 0.0 F1 -- Fear survived (0.114). That's a meaningfully
+different (and much less severe) failure than the combined run, where
+*both* Fear and Disgust hit exactly 0.0 -- evidence the graph fusion layer,
+not the larger text encoder, is the primary driver of the double-collapse.
+The distinctly different error pattern (predicts neutral far more often --
+58.7% of test utterances vs. the usual ~48-50%) made this worth keeping as
+a 6th ensemble candidate; log kept as
+`logs/train_final_run20_robertalarge_alone_61.10wf1.log` (filename keeps
+the original, pre-fix number for traceability to when it was logged). The
+graph fusion layer itself remains disabled and not otherwise pursued
+further this session -- two failed relational-modeling mechanisms (a
+scalar bias, now a real graph) is a strong enough signal that the problem
+is structural to this architecture's fused representation, not either
+implementation.
+
+**A real bug was caught here: `load_model()` ignored `use_graph_fusion`
+entirely.** It never read or passed this flag when reconstructing a model
+from a checkpoint, so every checkpoint loaded through it silently got the
+model's own default (`True`) regardless of what it was actually trained
+with -- corrupting evaluation for checkpoints A/B/C/D (predate graph fusion,
+zero trained weights for it, evaluated with an active random graph layer
+scrambling their forward pass) and F (explicitly trained with it off, same
+problem). This surfaced because a "new best" ensemble result looked
+suspicious enough to double-check. Fixed: `train_final.py` now saves
+`use_graph_fusion` in checkpoint metadata, and `load_model()` reads it with
+a default of `False` (not the model's own `True` default) for checkpoints
+saved before this field existed, since every checkpoint currently in use
+either predates the feature or was trained with it off. Verified B and F
+both now correctly resolve to `use_graph_fusion=False`, and B's re-evaluated
+solo score exactly reproduces its known-correct baseline (62.45%/61.50%/
+42.74%), confirming the fix. The bug's actual impact was smaller than it
+could have been -- the graph layer has a residual connection, so random
+weights added noise rather than destroying the signal -- but it was real,
+and every ensemble number below was recomputed after the fix rather than
+trusting the first pass.
+
+**With the fix in place: a new best result.** Testing the RoBERTa-large
+checkpoint (F) as a 6th ensemble member across every combination with B:
+**B+D+F is the new best, at 65.56% accuracy / 63.90% weighted F1 / 44.57%
+macro F1** -- beating the previous best (B+C+D, 64.56%/63.60%/46.01%) on
+accuracy and weighted F1 (the project's selection metric), though macro F1
+is lower. **Gap to AMB-DSGDN (66.07%/66.18%) is now 0.51 / 2.28 points --
+the closest this project has been all session**, down from ~5 points at
+the start. Full sweep (16 combinations across A/B/C/D/F) in
+`logs/ensemble_test_output.log`.
 
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
@@ -358,18 +395,20 @@ on relative performance, differential graph attention, auxiliary unimodal
 losses) and the explicit target for this phase of work. Its reported MELD
 numbers: 66.07% accuracy / 66.18% weighted F1 (IEMOCAP: 76.09%/75.64%).
 
-**Honest verdict: we still do not beat it, but the gap is now small.** Best
-validated result is the 3-checkpoint ensemble (B + seed43 + DistilBERT):
-64.56% accuracy / 63.60% weighted F1 -- **1.51 / 2.58 points behind**
-respectively, down from ~5 points behind at the start of this session. Four
-single-model changes adapted from AMB-DSGDN's method helped (auxiliary
-unimodal losses, adaptive dropout, the RoBERTa text upgrade, dialogue-
-relative speaker embeddings); the speaker-relational attention bias and
-sentiment loss, tested three ways, did not; ensembling -- a technique
-AMB-DSGDN's paper doesn't use -- did, once it combined genuinely different
-models rather than reseeded copies of the same one. Not every idea inspired
-by a stronger paper transfers cleanly, and reporting the failures is as much
-part of the record as the successes.
+**Honest verdict: we still do not beat it, but the gap is now very small.**
+Best validated result is the 3-checkpoint ensemble (B + DistilBERT +
+RoBERTa-large): 65.56% accuracy / 63.90% weighted F1 -- **0.51 / 2.28
+points behind** respectively, down from ~5 points behind at the start of
+this session. Five single-model changes adapted from AMB-DSGDN's method
+helped (auxiliary unimodal losses, adaptive dropout, the RoBERTa-base and
+then RoBERTa-large text upgrades, dialogue-relative speaker embeddings);
+the speaker-relational attention bias (twice), sentiment loss (twice),
+per-batch dropout, and a full graph attention fusion layer all did not;
+ensembling -- a technique AMB-DSGDN's paper doesn't use -- did, consistently,
+once it combined genuinely different models rather than reseeded copies of
+the same one. Not every idea inspired by a stronger paper transfers
+cleanly, and reporting the failures (including a real bug caught mid-session,
+see above) is as much part of the record as the successes.
 
 **For broader context:** other 2024-2026 systems on this task report
 weighted F1 in the 66-74% range (MCN-CL 73.1%, AMuSE ~74%, AM2-EmoJE 71.98%,

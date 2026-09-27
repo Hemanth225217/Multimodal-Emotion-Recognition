@@ -45,7 +45,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config import NUM_CLASSES, EMOTION_NAMES, FINAL_MODEL_PATH, DEVICE
 from training.dataset import MELDDataset
-from modules.data_loader import DISTILBERT_TEXT_PATH
+from modules.data_loader import DISTILBERT_TEXT_PATH, ROBERTA_TEXT_PATH, ROBERTA_LARGE_TEXT_PATH
 from modules.inference import load_model
 
 
@@ -60,16 +60,21 @@ CHECKPOINT_PATHS = {
     "C": env_path("ENSEMBLE_CKPT_C"),
     "D": env_path("ENSEMBLE_CKPT_D"),
     "E": env_path("ENSEMBLE_CKPT_E"),
+    "F": env_path("ENSEMBLE_CKPT_F"),
 }
 
 # (text_path, use_legacy_audio) each member's checkpoint was trained on.
-# None text_path means the default (RoBERTa).
+# Explicit for every member -- config.py's default text path has changed
+# twice (DistilBERT -> RoBERTa-base -> RoBERTa-large) since A/B/C were
+# trained, so relying on "None means default" here would silently point
+# older checkpoints at the wrong text embedding space.
 FEATURE_CONFIG = {
-    "A": (None, True),
-    "B": (None, True),
-    "C": (None, True),
+    "A": (ROBERTA_TEXT_PATH, True),
+    "B": (ROBERTA_TEXT_PATH, True),
+    "C": (ROBERTA_TEXT_PATH, True),
     "D": (DISTILBERT_TEXT_PATH, True),
-    "E": (None, False),
+    "E": (ROBERTA_TEXT_PATH, False),
+    "F": (ROBERTA_LARGE_TEXT_PATH, True),
 }
 
 
