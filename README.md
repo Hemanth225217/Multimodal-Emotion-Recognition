@@ -488,6 +488,37 @@ would be needed to check whether it pushes the four-way ensemble's 66.36%/
 reflects the specific (superseded) fine-tuned checkpoint that was actually
 in that combination when it was measured.
 
+**Follow-up 2: the same recipe on RoBERTa-large -- AMB-DSGDN's actual text
+encoder -- produces the best single model this project has ever trained,
+but Fear collapses again.** Everything up to this point had only fine-tuned
+RoBERTa-base; RoBERTa-large had only ever been used frozen (checkpoint F).
+Applied the same layer-freezing approach, scaled to RoBERTa-large's 24
+layers: froze the bottom 16 (the same ~2/3 ratio as the RoBERTa-base run),
+leaving the top 8 (28.7% of the encoder, 101.8M of 355.4M params)
+trainable. Smoke-tested locally first (same frozen/trainable gradient
+check as before, adapted for 24 layers). Trained on Kaggle's GPU (26.2 min,
+best epoch 9 of 10, val weighted F1 0.6366 -- the best validation score of
+any fine-tuning attempt this session, comfortably ahead of RoBERTa-base's
+0.6065). First run's kernel errored *after* training finished, during the
+output-copy step -- a script bug on this end (it still referenced the
+pre-rename checkpoint filename), not a training failure; fixed the kernel
+script to copy whatever checkpoint actually changed rather than a
+hardcoded name, and reran the full 26-minute training since the finished
+checkpoint had already been lost when the container tore down. Real test
+result: **64.18% accuracy / 63.32% weighted F1 / 43.57% macro F1** -- the
+best *solo* checkpoint this project has ever produced, beating every prior
+single model including frozen RoBERTa-large (F, 63.41%/60.85%/39.17%) and
+the RoBERTa-base fine-tune above on every metric. Disgust and Anger both
+score unusually well for this project (F1 0.216 and 0.520). **But Fear
+collapsed to 0.0 F1 again** -- the same failure the RoBERTa-base layer-
+freezing had fixed. So layer-freezing's fix for Fear collapse doesn't
+automatically transfer to a bigger encoder; whatever protects Fear at
+RoBERTa-base scale is apparently overwhelmed again once the trainable
+portion is large enough (101.8M trainable params here vs. 28.9M for the
+RoBERTa-base version), even at a similar frozen-fraction ratio. Kept as
+`models/final_model_finetuned_roberta_large.pt` (gitignored, like the other
+fine-tuned checkpoints) and `logs/evaluate_finetune_roberta_large_output.log`.
+
 **But fine-tuning turned out to help anyway -- as an ensemble member, not
 solo.** Tested the fine-tuned checkpoint (H) alongside B+D+F in every
 combination (`evaluation/ensemble_test_with_finetune.py`, after first

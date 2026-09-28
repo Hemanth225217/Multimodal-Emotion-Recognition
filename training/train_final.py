@@ -92,11 +92,21 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config import (
-    TEXT_DIM, AUDIO_DIM, VIDEO_DIM, NUM_CLASSES, NUM_SPEAKER_SLOTS,
-    NUM_SENTIMENT_CLASSES, EMOTION_NAMES, FINAL_MODEL_PATH, SEED, DEVICE,
+    TEXT_DIM as _CONFIG_TEXT_DIM, AUDIO_DIM, VIDEO_DIM, NUM_CLASSES, NUM_SPEAKER_SLOTS,
+    NUM_SENTIMENT_CLASSES, EMOTION_NAMES, FINAL_MODEL_PATH as _CONFIG_FINAL_MODEL_PATH, SEED, DEVICE,
 )
 from training.dataset import MELDDataset
 from models.fusion_model import MultimodalFusionModel
+
+# Optional overrides for training a differently-featured variant of this
+# same recipe (e.g. checkpoint D's DistilBERT features) without touching
+# config.py's defaults, which represent the current best/default recipe.
+# Unset, every one of these reproduces prior behavior exactly.
+import os
+TEXT_DIM = int(os.environ.get("TRAIN_TEXT_DIM", _CONFIG_TEXT_DIM))
+TEXT_PATH = os.environ.get("TRAIN_TEXT_PATH")  # None -> MELDDataset/data_loader default (RoBERTa-large)
+USE_LEGACY_AUDIO = os.environ.get("TRAIN_USE_LEGACY_AUDIO", "1") != "0"
+FINAL_MODEL_PATH = Path(os.environ.get("TRAIN_OUTPUT_PATH", str(_CONFIG_FINAL_MODEL_PATH)))
 
 EPOCHS = 25
 LEARNING_RATE = 3e-4
@@ -405,8 +415,8 @@ def main():
     print(f"Graph attention fusion: {'enabled' if USE_GRAPH_FUSION else 'DISABLED for this run'} (cross-modal + temporal + same-speaker edges, see models/graph_fusion.py)")
     print("=" * 70)
 
-    train_dataset = MELDDataset(split="train")
-    val_dataset = MELDDataset(split="val")
+    train_dataset = MELDDataset(split="train", text_path=TEXT_PATH, use_legacy_audio=USE_LEGACY_AUDIO)
+    val_dataset = MELDDataset(split="val", text_path=TEXT_PATH, use_legacy_audio=USE_LEGACY_AUDIO)
 
     train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False)
