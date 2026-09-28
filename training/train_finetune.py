@@ -56,12 +56,24 @@ from training.train_final import (
     modality_weight_entropy, modality_weight_cap_penalty,
     FOCAL_GAMMA, MAX_MODALITY_WEIGHT, CAP_PENALTY_WEIGHT, GRAD_CLIP_NORM,
     INITIAL_DROPOUT_PROBS, BATCH_DROPOUT_EMA_DECAY, AUX_LOSS_WEIGHT,
-    EARLY_STOP_PATIENCE, LR_PATIENCE,
+    EARLY_STOP_PATIENCE, LR_PATIENCE, FEAR, DISGUST,
 )
+
+# Optional overrides for sweeping this recipe's two most-suspect
+# hyperparameters (how much of the encoder is frozen, and how hard Fear/
+# Disgust are up-weighted) without another edit-commit-push cycle per
+# variant. Unset, every one of these reproduces prior behavior exactly.
+import os
+FREEZE_LAYERS_OVERRIDE = os.environ.get("TRAIN_FREEZE_LAYERS")
+OUTPUT_PATH_OVERRIDE = os.environ.get("TRAIN_OUTPUT_PATH")
+FEAR_WEIGHT_BOOST = float(os.environ.get("TRAIN_FEAR_WEIGHT_BOOST", "1.0"))
+DISGUST_WEIGHT_BOOST = float(os.environ.get("TRAIN_DISGUST_WEIGHT_BOOST", "1.0"))
 from models.fusion_model import MultimodalFusionModel
 from models.finetune_text_encoder import FinetuneTextEncoder
 
-FINETUNE_MODEL_PATH = PROJECT_ROOT / "models" / "final_model_finetuned_roberta_large.pt"
+FINETUNE_MODEL_PATH = Path(OUTPUT_PATH_OVERRIDE) if OUTPUT_PATH_OVERRIDE else (
+    PROJECT_ROOT / "models" / "final_model_finetuned_roberta_large.pt"
+)
 
 # roberta-large: AMB-DSGDN's actual text encoder (this project only ever
 # fine-tuned roberta-base until now; roberta-large was previously used
@@ -81,8 +93,11 @@ MODEL_LR = 3e-4
 # weighted F1 for the first time (62.57%/61.66%/42.02%, see README) --
 # confirming the overfitting hypothesis from that run. Scaling that same
 # ~2/3-frozen ratio to roberta-large's 24 layers: freeze 16, leave the top 8
-# (32.3% of the encoder, 116M of 355M params) trainable.
-FREEZE_LAYERS = 16
+# (32.3% of the encoder, 116M of 355M params) trainable. That run's real
+# result (64.18%/63.32%/43.57%, best solo model yet) still collapsed Fear
+# to 0.0 F1, unlike the roberta-base run -- TRAIN_FREEZE_LAYERS lets a
+# heavier-freeze variant be tried without editing this file.
+FREEZE_LAYERS = int(FREEZE_LAYERS_OVERRIDE) if FREEZE_LAYERS_OVERRIDE else 16
 WEIGHT_DECAY = 1e-4
 
 import random
@@ -186,7 +201,12 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, collate_fn=lambda x: x[0])
     val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False, collate_fn=lambda x: x[0])
 
-    class_weights = compute_class_weights(train_dataset).to(DEVICE)
+    class_weights = compute_class_weights(train_dataset)
+    if FEAR_WEIGHT_BOOST != 1.0 or DISGUST_WEIGHT_BOOST != 1.0:
+        class_weights[FEAR] *= FEAR_WEIGHT_BOOST
+        class_weights[DISGUST] *= DISGUST_WEIGHT_BOOST
+        print(f"Extra class-weight boost applied: Fear x{FEAR_WEIGHT_BOOST}, Disgust x{DISGUST_WEIGHT_BOOST}")
+    class_weights = class_weights.to(DEVICE)
 
     text_encoder = FinetuneTextEncoder(TEXT_MODEL_NAME, freeze_layers=FREEZE_LAYERS).to(DEVICE)
     model = MultimodalFusionModel(
