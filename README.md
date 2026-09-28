@@ -131,16 +131,22 @@ included).
 | Ensemble: B + DistilBERT + RoBERTa-large (B+D+F) | 65.56% | 63.90% | 44.57% |
 | Ensemble: B + DistilBERT + fine-tuned RoBERTa (B+D+H) | 65.98% | **64.56%** | 45.28% |
 | **Ensemble: B+D+F + fine-tuned RoBERTa (B+D+F+H)** | **66.36%** | 64.55% | 44.96% |
+| Ensemble: B + layer-frozen fine-tuned RoBERTa (B+H, improved) | 64.90% | 63.50% | 44.16% |
 
-The current best (bolded) is a 4-member ensemble that adds the fine-tuned
+The current best (bolded) is a 4-member ensemble that adds a fine-tuned
 text encoder (H, see "End-to-end text fine-tuning" below) as a member
 alongside the frozen B+D+F ensemble -- even though H alone (62.57%/61.50%)
 never beat B+D+F alone, it disagrees with the frozen members often enough
 in the right places to help the vote. This is the same "different features
 help, identical recipes don't" pattern as the rest of the ensembling work,
 just with "fine-tuned vs. frozen" as the source of diversity instead of
-"different text encoder." See "Base paper comparison" below for the full
-path there, including a real bug that was caught and fixed along the way.
+"different text encoder." The last row uses a subsequently-improved fine-
+tuned checkpoint (layer-frozen, see below) paired with B alone -- it beats
+the original B+H pairing (64.79%/63.36%/43.76%) on every metric, but hasn't
+been re-tested in the full 4-member combination since the D/F checkpoints
+used above are no longer saved locally (see "Honest caveat" below). See
+"Base paper comparison" below for the full path there, including a real bug
+that was caught and fixed along the way.
 
 The bolded row is the current model. Speaker-aware modeling is the first
 change this session to move accuracy meaningfully (+1.49 points) rather than
@@ -447,6 +453,40 @@ weighting, auxiliary losses) may simply not compose well with *any*
 sufficiently large change to the text pathway, fine-tuning included. Not
 promoted to the main checkpoint; kept as `models/final_model_finetuned.pt`
 and `logs/evaluate_finetune_output.log` for the record.
+
+**Follow-up: freezing the bottom 8 of 12 layers fixes the Fear collapse and
+gives a small, real win.** The full-fine-tuning result's own writeup named
+overfitting the minority-class protections as a plausible cause -- tested
+that hypothesis directly by freezing RoBERTa-base's embeddings and bottom 8
+transformer layers, leaving only the top 4 (23.2% of the encoder, 28.9M of
+124.6M params) trainable (`models/finetune_text_encoder.py`'s
+`freeze_layers` param, `FREEZE_LAYERS = 8` in `train_finetune.py`).
+Verified the freezing itself was real before spending GPU time: a local
+smoke test confirmed frozen parameters are provably unchanged after
+`optimizer.step()` while the top layers provably do change. Trained on
+Kaggle's GPU (10.3 min, best epoch 9 of 10, val weighted F1 0.6065 -- better
+than the full-fine-tune run's 0.5882). Real test result: **62.57% accuracy
+/ 61.66% weighted F1 / 42.02% macro F1.** Same accuracy as the full-tuning
+attempt, but weighted F1 is now *higher* than the frozen baseline (61.50%)
+for the first time any fine-tuning variant has beaten it, and **Fear no
+longer collapses** (F1 0.0 -> 0.126, recall 0.0 -> 0.14) -- direct evidence
+for the overfitting hypothesis, though modest in size. Also re-tested
+paired with checkpoint B: **B + layer-frozen fine-tune reaches 64.90%
+accuracy / 63.50% weighted F1 / 44.16% macro F1**, again beating the
+equivalent pairing with the full-fine-tune checkpoint (64.79%/63.36%/43.76%)
+on every metric. This checkpoint (referred to as H below) supersedes the
+full-fine-tuning one as this project's fine-tuned member going forward --
+strictly better in every configuration actually measured. **Honest caveat:**
+the frozen DistilBERT (D) and RoBERTa-large (F) checkpoints used in the
+B+D+F+H four-member ensemble below predate this checkpoint and are no
+longer saved on disk (only B is kept permanently; D/F/G were evaluated and
+not kept, consistent with how this project only retains the standing-best
+checkpoint locally), so the full four-way combination has not been
+re-verified with this improved fine-tuned member -- retraining D and F
+would be needed to check whether it pushes the four-way ensemble's 66.36%/
+64.55% any further, and that has not been done. The B+D+F+H number below
+reflects the specific (superseded) fine-tuned checkpoint that was actually
+in that combination when it was measured.
 
 **But fine-tuning turned out to help anyway -- as an ensemble member, not
 solo.** Tested the fine-tuned checkpoint (H) alongside B+D+F in every
