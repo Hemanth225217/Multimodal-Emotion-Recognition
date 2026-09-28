@@ -584,6 +584,31 @@ checkpoints behind it are gone. Full sweep in
 locally as `models/checkpoint_d_retrained.pt` / `checkpoint_f_retrained.pt`
 (gitignored, consistent with every other non-standing-best checkpoint).
 
+**Weighted ensembling: tried properly, and it overfits the validation set.**
+Every ensemble result above averages member probabilities with equal
+weight. Fit per-member weights instead
+(`evaluation/weighted_ensemble_test.py`), two ways, both on the
+**validation** set only: (1) softmax-parameterized weights minimizing
+validation NLL via Nelder-Mead, (2) a direct grid search (0.1 steps)
+maximizing validation weighted F1 -- the project's actual selection metric.
+Both looked like clear wins on validation: equal weighting scores 0.6243
+weighted F1 there, NLL-fitted weights reach 0.6390, and the grid search
+reaches 0.6482 by weighting B and D to *exactly zero* and betting
+everything on F+H. Applied to the test set, the story reverses: equal
+weighting scores 65.56%/64.16%/45.27% (matching the re-verification result
+above, as it should -- same members, same weights), NLL-fitted weights
+score slightly worse (65.36%/64.13%/44.20%), and the grid-search weights
+that looked *best* on validation score worse still (64.44%/63.59%/45.14%)
+-- clearly beaten by plain equal weighting on every metric. This is
+textbook overfitting: with only 1,108 validation utterances and a search
+free to zero out entire members, the grid search found a combination that
+fit validation noise rather than a genuinely better member-weighting.
+**Conclusion: equal weighting stays.** This was evaluated honestly rather
+than assumed, and the answer is a real no -- consistent with per-member
+temperature scaling also not helping earlier
+(`evaluation/calibrated_ensemble_test.py`). Full output in
+`logs/weighted_ensemble_test_output.log`.
+
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
 on relative performance, differential graph attention, auxiliary unimodal
