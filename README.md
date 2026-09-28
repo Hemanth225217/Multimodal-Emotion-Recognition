@@ -131,22 +131,27 @@ included).
 | Ensemble: B + DistilBERT + RoBERTa-large (B+D+F) | 65.56% | 63.90% | 44.57% |
 | Ensemble: B + DistilBERT + fine-tuned RoBERTa (B+D+H) | 65.98% | **64.56%** | 45.28% |
 | **Ensemble: B+D+F + fine-tuned RoBERTa (B+D+F+H)** | **66.36%** | 64.55% | 44.96% |
-| Ensemble: B + layer-frozen fine-tuned RoBERTa (B+H, improved) | 64.90% | 63.50% | 44.16% |
+| Ensemble: B + fine-tuned RoBERTa-large (B+H, improved fine-tune) | 64.98% | 63.76% | 43.83% |
+| Ensemble: B+D+F (retrained) + fine-tuned RoBERTa-large | 65.56% | 64.16% | **45.27%** |
 
-The current best (bolded) is a 4-member ensemble that adds a fine-tuned
-text encoder (H, see "End-to-end text fine-tuning" below) as a member
-alongside the frozen B+D+F ensemble -- even though H alone (62.57%/61.50%)
-never beat B+D+F alone, it disagrees with the frozen members often enough
+The best-ever *verified* result (bolded) is the 4-member ensemble
+B+D+F+H, which beats AMB-DSGDN's reported accuracy (66.07%) for the first
+time this project has managed it -- even though H alone (62.57%/61.50%)
+never beat B+D+F alone, it disagreed with the frozen members often enough
 in the right places to help the vote. This is the same "different features
 help, identical recipes don't" pattern as the rest of the ensembling work,
 just with "fine-tuned vs. frozen" as the source of diversity instead of
-"different text encoder." The last row uses a subsequently-improved fine-
-tuned checkpoint (layer-frozen, see below) paired with B alone -- it beats
-the original B+H pairing (64.79%/63.36%/43.76%) on every metric, but hasn't
-been re-tested in the full 4-member combination since the D/F checkpoints
-used above are no longer saved locally (see "Honest caveat" below). See
-"Base paper comparison" below for the full path there, including a real bug
-that was caught and fixed along the way.
+"different text encoder." The checkpoints behind that exact row are no
+longer saved locally, though, and a since-improved fine-tuned checkpoint
+(RoBERTa-large, layer-frozen, see "End-to-end text fine-tuning" below)
+turned out NOT to reproduce or beat it once paired with freshly retrained
+D/F -- the last row above. That's a real, instructive negative result, not
+a discarded one: it shows ensemble scores depend on the specific trained
+instance of each member, not just which recipe it came from -- see
+"Re-verification attempt" below for why. The second-to-last row (B alone
+plus the improved fine-tune, no D/F) is a genuinely new best 2-member
+result, though. See "Base paper comparison" below for the full path here,
+including a real bug that was caught and fixed along the way.
 
 The bolded row is the current model. Speaker-aware modeling is the first
 change this session to move accuracy meaningfully (+1.49 points) rather than
@@ -537,6 +542,48 @@ one's to be useful, even though its solo score is unremarkable. Full sweep
 in `logs/ensemble_test_with_finetune_output.log`. The standing best result
 is now **B+D+F+H by accuracy, or B+D+H by weighted F1/macro F1**.
 
+**Re-verification attempt: retraining D and F to pair with the improved
+fine-tuned checkpoint did not beat the record above, and shows why.** The
+66.36%/64.55% result used specific D and F checkpoint files that are no
+longer saved anywhere (only B is kept permanently), so it couldn't be
+directly re-tested with H3 (the RoBERTa-large fine-tune above, which beats
+the original H in every configuration measured). Retrained both fresh on
+Kaggle's GPU to check anyway -- D in 6.6 min (best val weighted F1 0.5840),
+F in 8.2 min (0.5816) -- using new environment-variable overrides added to
+`train_final.py` (`TRAIN_TEXT_DIM`, `TRAIN_TEXT_PATH`, `TRAIN_OUTPUT_PATH`,
+`TRAIN_USE_LEGACY_AUDIO`; unset, behavior is unchanged) so this didn't
+require touching config.py's defaults. Real result with the fresh
+checkpoints and H3: **B+D+F+H reaches 65.56% accuracy / 64.16% weighted F1
+/ 45.27% macro F1** -- macro F1 is a new best, but accuracy and weighted F1
+both fall *short* of the original 66.36%/64.55%, despite H3 being a
+strictly better fine-tuned member than the original H. Why: the retrained
+F scores only 60.00%/59.98%/42.36% solo, well below the original F's
+63.41%/60.85%/39.17% (see the isolation-result note above) -- and matches,
+suspiciously closely, checkpoint G's solo score from the earlier
+same-recipe GPU retrain, both landing around 60%/60%/42% versus the
+original CPU-trained F's 63%/61%/39%. Two independent GPU retrains of the
+identical "RoBERTa-large recipe" both scoring several points lower than
+the original on accuracy and weighted F1, while both scoring *higher* on
+macro F1, looks like more than one-off noise -- something about training
+this specific recipe on GPU rather than CPU may systematically shift the
+accuracy/macro-F1 tradeoff, though the cause (numerics, effective batching,
+or just two unlucky seeds) isn't confirmed. Either way, this is a clean
+demonstration of a pattern this project has flagged before but never shown
+this starkly: **ensemble results depend on the specific trained instance
+of each member, not just which recipe it came from** -- swapping in a
+better fine-tuned model doesn't guarantee a better ensemble if the frozen
+members it's combined with happen to be weaker instances than before.
+Other combinations from this re-verification: B+H alone reaches 64.98%/
+63.76%/43.83% (a new best 2-member result, see above), B+D+H reaches
+65.79%/64.05%/42.98%, B+F+H reaches 64.67%/63.59%/45.24%. **The 66.36%
+accuracy / 64.55% weighted F1 result stands as the project's best verified
+result** -- it was genuinely measured and reported at the time, the same
+as every superseded run kept in this file's history, even though the exact
+checkpoints behind it are gone. Full sweep in
+`logs/ensemble_test_full_reverify_output.log`; retrained checkpoints kept
+locally as `models/checkpoint_d_retrained.pt` / `checkpoint_f_retrained.pt`
+(gitignored, consistent with every other non-standing-best checkpoint).
+
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
 on relative performance, differential graph attention, auxiliary unimodal
@@ -565,6 +612,12 @@ it combined genuinely different models rather than reseeded or re-trained
 copies of the same one. Not every idea inspired by a stronger paper
 transfers cleanly, and reporting the failures (including a real bug caught
 mid-session, see above) is as much part of the record as the successes.
+A later attempt to push past 66.36%/64.55% -- fine-tuning RoBERTa-large
+itself (AMB-DSGDN's actual encoder) and retraining D/F to re-verify the
+full ensemble -- produced this project's best-ever single model (64.18%/
+63.32% solo) and best-ever 2-member ensemble (B+H, 64.98%/63.76%), but did
+not beat the standing 66.36%/64.55% four-member result; see "Re-verification
+attempt" above for the honest reason why.
 
 **For broader context:** other 2024-2026 systems on this task report
 weighted F1 in the 66-74% range (MCN-CL 73.1%, AMuSE ~74%, AM2-EmoJE 71.98%,
