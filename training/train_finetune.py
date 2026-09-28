@@ -3,7 +3,7 @@ system in the literature comparison uses that this project never has.
 
 Every previous text upgrade in this project (DistilBERT -> RoBERTa-base ->
 RoBERTa-large) was a frozen feature swap -- extract once, never update
-during training. This script instead runs a trainable RoBERTa-base through
+during training. This script instead runs a trainable text encoder through
 a live forward+backward pass every training step
 (models/finetune_text_encoder.py), feeding its output into the exact same
 downstream architecture as the best-known recipe (checkpoint B/F): the
@@ -11,6 +11,12 @@ adaptive fusion model with auxiliary unimodal losses, per-batch adaptive
 modality dropout, and dialogue-relative speaker embeddings. Graph fusion
 and the sentiment loss stay off, matching the current best configuration --
 fine-tuning is the one new variable being tested here.
+
+First attempt (run17) fine-tuned all of roberta-base and tied the frozen
+baseline while collapsing Fear to 0.0 F1. Freezing the bottom 8 of its 12
+layers (FREEZE_LAYERS below) fixed both problems -- see README. This run
+applies that same finding to roberta-large (AMB-DSGDN's actual encoder),
+which this project had only ever used frozen (checkpoint F) until now.
 
 Made practical by the Kaggle GPU pipeline: fine-tuning a transformer on CPU
 would take hours per run, which is why every previous text upgrade in this
@@ -23,9 +29,10 @@ its pretrained weights) for the RoBERTa encoder, and the existing recipe's
 learning rate (3e-4) for everything else (LSTMs, attention, classifiers),
 which starts randomly initialized and needs much larger updates.
 
-Produces models/final_model_finetuned.pt (kept separate from
-models/final_model.pt so this experiment can't silently clobber the
-current best checkpoint if something goes wrong).
+Produces models/final_model_finetuned_roberta_large.pt (kept separate from
+both models/final_model.pt and the roberta-base fine-tune's
+models/final_model_finetuned.pt so this experiment can't silently clobber
+either existing checkpoint if something goes wrong).
 """
 
 import sys
@@ -54,26 +61,28 @@ from training.train_final import (
 from models.fusion_model import MultimodalFusionModel
 from models.finetune_text_encoder import FinetuneTextEncoder
 
-FINETUNE_MODEL_PATH = PROJECT_ROOT / "models" / "final_model_finetuned.pt"
+FINETUNE_MODEL_PATH = PROJECT_ROOT / "models" / "final_model_finetuned_roberta_large.pt"
 
-TEXT_MODEL_NAME = "roberta-base"
-TEXT_DIM = 768  # roberta-base hidden size
+# roberta-large: AMB-DSGDN's actual text encoder (this project only ever
+# fine-tuned roberta-base until now; roberta-large was previously used
+# frozen only, as checkpoint F). Output path above is deliberately distinct
+# from final_model_finetuned.pt (the roberta-base layer-frozen result,
+# 62.57%/61.66%/42.02% -- see README) so this run can't clobber it.
+TEXT_MODEL_NAME = "roberta-large"
+TEXT_DIM = 1024  # roberta-large hidden size
 
 EPOCHS = 10  # fine-tuned transformers converge (and overfit) faster than frozen-feature training
 TEXT_ENCODER_LR = 2e-5
 MODEL_LR = 3e-4
 
-# Bottom N of RoBERTa-base's 12 layers (plus embeddings) to keep frozen.
-# run17 (0 -- fine-tune everything) tied the frozen baseline on weighted F1
-# and collapsed Fear to 0.0 F1; full fine-tuning of all 12 layers on ~10K
-# training utterances plausibly overfits/destabilizes the minority-class
-# protections faster than it helps. Freezing the bottom 8 (standard
-# practice: lower transformer layers tend to encode general-purpose
-# linguistic features, upper layers encode more task-specific ones) leaves
-# only the top 4 layers plus everything downstream of them trainable --
-# far fewer parameters to overfit, while still letting the representation
-# specialize.
-FREEZE_LAYERS = 8
+# Bottom N transformer layers (plus embeddings) to keep frozen. Freezing 8
+# of roberta-base's 12 layers (leaving the top 4 trainable, 23.2% of the
+# encoder) fixed run17's Fear collapse and beat the frozen baseline on
+# weighted F1 for the first time (62.57%/61.66%/42.02%, see README) --
+# confirming the overfitting hypothesis from that run. Scaling that same
+# ~2/3-frozen ratio to roberta-large's 24 layers: freeze 16, leave the top 8
+# (32.3% of the encoder, 116M of 355M params) trainable.
+FREEZE_LAYERS = 16
 WEIGHT_DECAY = 1e-4
 
 import random

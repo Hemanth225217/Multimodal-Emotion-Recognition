@@ -56,6 +56,6 @@ Thumbs.db
 
 .ipynb_checkpoints/
 
-# Rejected experiment checkpoints kept locally only, not committed (large,
-# and not the standing best model -- see README for why).
-models/final_model_finetuned.pt
+# Fine-tuning experiment checkpoints kept locally only, not committed
+# (large, and not the standing best model -- see README for why).
+models/final_model_finetuned*.pt
