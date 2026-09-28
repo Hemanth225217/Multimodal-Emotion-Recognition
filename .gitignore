@@ -54,4 +54,8 @@ Thumbs.db
 # Jupyter
 # ============================================================
 
-.ipynb_checkpoints/models/final_model_finetuned.pt
+.ipynb_checkpoints/
+
+# Rejected experiment checkpoints kept locally only, not committed (large,
+# and not the standing best model -- see README for why).
+models/final_model_finetuned.pt

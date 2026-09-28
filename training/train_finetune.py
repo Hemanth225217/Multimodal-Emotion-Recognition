@@ -62,6 +62,18 @@ TEXT_DIM = 768  # roberta-base hidden size
 EPOCHS = 10  # fine-tuned transformers converge (and overfit) faster than frozen-feature training
 TEXT_ENCODER_LR = 2e-5
 MODEL_LR = 3e-4
+
+# Bottom N of RoBERTa-base's 12 layers (plus embeddings) to keep frozen.
+# run17 (0 -- fine-tune everything) tied the frozen baseline on weighted F1
+# and collapsed Fear to 0.0 F1; full fine-tuning of all 12 layers on ~10K
+# training utterances plausibly overfits/destabilizes the minority-class
+# protections faster than it helps. Freezing the bottom 8 (standard
+# practice: lower transformer layers tend to encode general-purpose
+# linguistic features, upper layers encode more task-specific ones) leaves
+# only the top 4 layers plus everything downstream of them trainable --
+# far fewer parameters to overfit, while still letting the representation
+# specialize.
+FREEZE_LAYERS = 8
 WEIGHT_DECAY = 1e-4
 
 import random
@@ -167,18 +179,19 @@ def main():
 
     class_weights = compute_class_weights(train_dataset).to(DEVICE)
 
-    text_encoder = FinetuneTextEncoder(TEXT_MODEL_NAME).to(DEVICE)
+    text_encoder = FinetuneTextEncoder(TEXT_MODEL_NAME, freeze_layers=FREEZE_LAYERS).to(DEVICE)
     model = MultimodalFusionModel(
         text_dim=TEXT_DIM, audio_dim=AUDIO_DIM, video_dim=VIDEO_DIM, num_classes=NUM_CLASSES,
         num_speaker_slots=NUM_SPEAKER_SLOTS, num_sentiment_classes=NUM_SENTIMENT_CLASSES,
         use_graph_fusion=False,
     ).to(DEVICE)
-    total_params = sum(p.numel() for p in text_encoder.parameters()) + sum(p.numel() for p in model.parameters())
+    trainable_encoder_params = [p for p in text_encoder.parameters() if p.requires_grad]
+    total_params = sum(p.numel() for p in trainable_encoder_params) + sum(p.numel() for p in model.parameters())
     print(f"\nTotal trainable parameters (encoder + model): {total_params:,}")
 
     criterion = FocalLoss(class_weights, gamma=FOCAL_GAMMA)
     optimizer = torch.optim.AdamW([
-        {"params": text_encoder.parameters(), "lr": TEXT_ENCODER_LR},
+        {"params": trainable_encoder_params, "lr": TEXT_ENCODER_LR},
         {"params": model.parameters(), "lr": MODEL_LR},
     ], weight_decay=WEIGHT_DECAY)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", factor=0.5, patience=LR_PATIENCE)

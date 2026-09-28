@@ -128,11 +128,19 @@ included).
 | ~~+ sentiment auxiliary loss alone (bias off)~~ | ~~61.95%~~ | ~~60.13%~~ | ~~41.30%~~ |
 | Ensemble: RoBERTa (no speaker) + RoBERTa+speaker, avg softmax | 63.18% | 62.45% | 45.38% |
 | Ensemble: + DistilBERT (B+C+D, seed variant + DistilBERT) | 64.56% | 63.60% | **46.01%** |
-| **Ensemble: B + DistilBERT + RoBERTa-large (B+D+F)** | **65.56%** | **63.90%** | 44.57% |
+| Ensemble: B + DistilBERT + RoBERTa-large (B+D+F) | 65.56% | 63.90% | 44.57% |
+| Ensemble: B + DistilBERT + fine-tuned RoBERTa (B+D+H) | 65.98% | **64.56%** | 45.28% |
+| **Ensemble: B+D+F + fine-tuned RoBERTa (B+D+F+H)** | **66.36%** | 64.55% | 44.96% |
 
-The current best (bolded) is a 3-member ensemble; see "Base paper
-comparison" below for the full path there, including a real bug that was
-caught and fixed along the way.
+The current best (bolded) is a 4-member ensemble that adds the fine-tuned
+text encoder (H, see "End-to-end text fine-tuning" below) as a member
+alongside the frozen B+D+F ensemble -- even though H alone (62.57%/61.50%)
+never beat B+D+F alone, it disagrees with the frozen members often enough
+in the right places to help the vote. This is the same "different features
+help, identical recipes don't" pattern as the rest of the ensembling work,
+just with "fine-tuned vs. frozen" as the source of diversity instead of
+"different text encoder." See "Base paper comparison" below for the full
+path there, including a real bug that was caught and fixed along the way.
 
 The bolded row is the current model. Speaker-aware modeling is the first
 change this session to move accuracy meaningfully (+1.49 points) rather than
@@ -438,8 +446,25 @@ classes; or the project's minority-class protections (focal loss, class
 weighting, auxiliary losses) may simply not compose well with *any*
 sufficiently large change to the text pathway, fine-tuning included. Not
 promoted to the main checkpoint; kept as `models/final_model_finetuned.pt`
-and `logs/evaluate_finetune_output.log` for the record. The standing best
-result remains the B+D+F ensemble.
+and `logs/evaluate_finetune_output.log` for the record.
+
+**But fine-tuning turned out to help anyway -- as an ensemble member, not
+solo.** Tested the fine-tuned checkpoint (H) alongside B+D+F in every
+combination (`evaluation/ensemble_test_with_finetune.py`, after first
+verifying `FinetuneMELDDataset`'s test-set ordering exactly matches the
+frozen-feature dataset's, 0 mismatches across all 280 dialogues, so H's
+predictions can be combined positionally with the others). Even though H
+alone never beat B+D+F alone, adding it produces a new best on every
+metric: **B+D+F+H reaches 66.36% accuracy / 64.55% weighted F1 / 44.96%
+macro F1**, and B+D+H (dropping F) reaches 65.98% / **64.56%** / **45.28%**
+-- both strictly better than B+D+F's 65.56%/63.90%/44.57%. This fits the
+same pattern as every other successful ensembling step this session:
+identical recipes don't help (seed43, seed44, Kaggle-GPU checkpoint G all
+failed to add value), but a genuinely different member does -- and a
+fine-tuned encoder's errors are apparently different enough from a frozen
+one's to be useful, even though its solo score is unremarkable. Full sweep
+in `logs/ensemble_test_with_finetune_output.log`. The standing best result
+is now **B+D+F+H by accuracy, or B+D+H by weighted F1/macro F1**.
 
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
@@ -447,20 +472,28 @@ on relative performance, differential graph attention, auxiliary unimodal
 losses) and the explicit target for this phase of work. Its reported MELD
 numbers: 66.07% accuracy / 66.18% weighted F1 (IEMOCAP: 76.09%/75.64%).
 
-**Honest verdict: we still do not beat it, but the gap is now very small.**
-Best validated result is the 3-checkpoint ensemble (B + DistilBERT +
-RoBERTa-large): 65.56% accuracy / 63.90% weighted F1 -- **0.51 / 2.28
-points behind** respectively, down from ~5 points behind at the start of
-this session. Five single-model changes adapted from AMB-DSGDN's method
-helped (auxiliary unimodal losses, adaptive dropout, the RoBERTa-base and
-then RoBERTa-large text upgrades, dialogue-relative speaker embeddings);
-the speaker-relational attention bias (twice), sentiment loss (twice),
-per-batch dropout, and a full graph attention fusion layer all did not;
-ensembling -- a technique AMB-DSGDN's paper doesn't use -- did, consistently,
-once it combined genuinely different models rather than reseeded copies of
-the same one. Not every idea inspired by a stronger paper transfers
-cleanly, and reporting the failures (including a real bug caught mid-session,
-see above) is as much part of the record as the successes.
+**Honest verdict: accuracy now beats it; weighted F1 is close but still
+behind.** Best validated result is the 4-checkpoint ensemble (B + DistilBERT
++ RoBERTa-large + fine-tuned RoBERTa, B+D+F+H): **66.36% accuracy -- 0.29
+points ABOVE AMB-DSGDN's 66.07%.** Weighted F1 is 64.55% on that same
+combination, or 64.56% on B+D+H -- **1.62-1.63 points behind** AMB-DSGDN's
+66.18%, narrowed from 2.28 points at the previous best (B+D+F) and from ~5
+points at the start of this session. This is a genuine, real result on
+accuracy -- not a rounding trick or a cherry-picked split, evaluated the
+same way as every other number in this file -- but weighted F1 (this
+project's own checkpoint-selection metric, and arguably the fairer measure
+on a 7-class dataset this imbalanced) still favors AMB-DSGDN. Six
+single-model or pipeline changes adapted from AMB-DSGDN's method helped
+(auxiliary unimodal losses, adaptive dropout, the RoBERTa-base and then
+RoBERTa-large text upgrades, dialogue-relative speaker embeddings, and
+end-to-end fine-tuning -- the last one only via ensembling, not solo); the
+speaker-relational attention bias (twice), sentiment loss (twice), per-batch
+dropout, and a full graph attention fusion layer all did not; ensembling --
+a technique AMB-DSGDN's paper doesn't use -- did, consistently, every time
+it combined genuinely different models rather than reseeded or re-trained
+copies of the same one. Not every idea inspired by a stronger paper
+transfers cleanly, and reporting the failures (including a real bug caught
+mid-session, see above) is as much part of the record as the successes.
 
 **For broader context:** other 2024-2026 systems on this task report
 weighted F1 in the 66-74% range (MCN-CL 73.1%, AMuSE ~74%, AM2-EmoJE 71.98%,

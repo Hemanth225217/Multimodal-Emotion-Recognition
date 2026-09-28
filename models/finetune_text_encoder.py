@@ -22,12 +22,37 @@ from transformers import AutoModel, AutoTokenizer
 
 
 class FinetuneTextEncoder(nn.Module):
-    def __init__(self, model_name="roberta-base", max_length=64):
+    def __init__(self, model_name="roberta-base", max_length=64, freeze_layers=0):
+        """freeze_layers: number of bottom transformer layers (plus the
+        embedding layer) to keep frozen, fine-tuning only the top
+        (total_layers - freeze_layers) layers. 0 fine-tunes everything
+        (the first attempt, run17: tied the frozen baseline on weighted F1
+        and made macro F1 worse -- full fine-tuning of all 12 layers on
+        ~10K training utterances plausibly overfits/destabilizes the
+        minority-class protections faster than it helps). Freezing most of
+        the network and adapting only the top layers is the standard fix
+        for exactly this symptom: less capacity to overfit, while still
+        letting the representation specialize for emotion classification.
+        """
         super().__init__()
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModel.from_pretrained(model_name)
         self.max_length = max_length
         self.hidden_size = self.model.config.hidden_size
+
+        if freeze_layers > 0:
+            for param in self.model.embeddings.parameters():
+                param.requires_grad = False
+            for layer in self.model.encoder.layer[:freeze_layers]:
+                for param in layer.parameters():
+                    param.requires_grad = False
+            total_layers = len(self.model.encoder.layer)
+            trainable = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+            total = sum(p.numel() for p in self.model.parameters())
+            print(
+                f"FinetuneTextEncoder: froze embeddings + bottom {freeze_layers}/{total_layers} layers "
+                f"({trainable:,}/{total:,} params trainable, {100*trainable/total:.1f}%)"
+            )
 
     def forward(self, texts, device):
         """texts: list[str], one dialogue's utterances in order.
