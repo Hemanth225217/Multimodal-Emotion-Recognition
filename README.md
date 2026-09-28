@@ -412,6 +412,35 @@ which matters most for trying something that needs many fast iterations
 attempting real end-to-end fine-tuning) rather than for re-running the
 existing recipe under different randomness.
 
+**End-to-end text fine-tuning, tried for real: essentially ties the frozen
+baseline, doesn't beat it.** Built a full fine-tuning pipeline
+(`training/train_finetune.py`, `models/finetune_text_encoder.py`,
+`training/dataset_finetune.py`) -- a genuinely trainable RoBERTa-base
+(verified gradients reach the transformer layers before trusting it with
+GPU time), same recipe as checkpoint B/F otherwise (auxiliary losses,
+adaptive dropout, speaker embeddings, graph fusion and sentiment loss both
+off), trained on Kaggle's GPU with a two-speed optimizer (2e-5 for the
+encoder, 3e-4 for the rest). Validation looked genuinely promising --
+0.5882 weighted F1 at epoch 7, the best validation score of the entire
+session. The real test result: **62.57% accuracy / 61.50% weighted F1 /
+39.93% macro F1** -- weighted F1 is *exactly* the same as the frozen
+RoBERTa-base baseline (61.50%), accuracy is marginally better (+0.12), and
+macro F1 is worse, because **Fear collapsed to 0.0 F1** -- the same
+recurring failure pattern seen with the relational bias, sentiment loss,
+label smoothing, and graph fusion attempts. This is a genuinely surprising,
+disappointing result given the literature comparison's clear implication
+that fine-tuning is the main thing separating this project from
+higher-scoring 2024-2026 systems. Plausible reasons, none confirmed:
+fine-tuning a 125M-parameter encoder on ~10K training utterances may need
+more careful regularization or a shorter/warmed-up schedule than the
+10-epoch, fixed-LR setup used here to avoid overfitting to majority
+classes; or the project's minority-class protections (focal loss, class
+weighting, auxiliary losses) may simply not compose well with *any*
+sufficiently large change to the text pathway, fine-tuning included. Not
+promoted to the main checkpoint; kept as `models/final_model_finetuned.pt`
+and `logs/evaluate_finetune_output.log` for the record. The standing best
+result remains the B+D+F ensemble.
+
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
 on relative performance, differential graph attention, auxiliary unimodal
