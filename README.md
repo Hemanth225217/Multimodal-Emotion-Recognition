@@ -167,9 +167,9 @@ fine-tune of RoBERTa-base) is not retained as a file. See "Ensemble results
 under an honest selection protocol" below for how the bottom rows were
 produced.
 
-The bolded row is the current model. Speaker-aware modeling is the first
-change this session to move accuracy meaningfully (+1.49 points) rather than
-trading it off, though it cost a little macro F1 (43.51% -> 42.74%): Disgust
+Speaker-aware modeling (the 62.45% single-model row -- checkpoint B, the model
+the demo serves) is the first change this session to move accuracy
+meaningfully (+1.49 points) rather than trading it off, though it cost a little macro F1 (43.51% -> 42.74%): Disgust
 F1 dropped from 0.144 to 0.050 (support is only 68 test utterances, so this
 is a noisy class, but it's a real regression on this run, not omitted here).
 Fear held steady at 0.222. Full per-class precision/recall/F1/support:
@@ -571,8 +571,11 @@ identical recipes don't help (seed43, seed44, Kaggle-GPU checkpoint G all
 failed to add value), but a genuinely different member does -- and a
 fine-tuned encoder's errors are apparently different enough from a frozen
 one's to be useful, even though its solo score is unremarkable. Full sweep
-in `logs/ensemble_test_with_finetune_output.log`. The standing best result
-is now **B+D+F+H by accuracy, or B+D+H by weighted F1/macro F1**.
+in `logs/ensemble_test_with_finetune_output.log`. At this point in the
+history that was the standing best (B+D+F+H by accuracy, B+D+H by weighted
+F1 / macro F1) -- but it was found by scoring several subsets on the test
+set itself, so it is biased upward; the protocol-clean numbers are in
+"Ensemble results under an honest selection protocol" below.
 
 **First re-verification attempt (retraining D and F): superseded, kept for
 the record because the mistakes in it are instructive.** At the time, the
