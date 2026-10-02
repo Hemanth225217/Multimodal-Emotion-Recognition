@@ -708,6 +708,37 @@ points below on weighted F1, and it is decisively better than any single
 model here. The weakest classes are unchanged: Fear (F1 0.07, recall 4%)
 and Disgust (F1 0.14) -- 50 and 68 test utterances respectively.
 
+**Why Fear and Disgust fail (`evaluation/minority_error_analysis.py`,
+`logs/minority_error_analysis_output.log`, on the validation-chosen
+ensemble).** It is not a thresholding accident -- the model is genuinely
+unsure about these classes:
+
+* *Fear* (50 test utterances): the ensemble predicts Fear only 6 times in
+  2,610 utterances (2 correct), and its probability for the true class on
+  real Fear examples averages 0.10 and never exceeds 0.29. 48% of true Fear
+  goes to neutral, 18% to anger, 10% each to sadness and surprise. Fear
+  utterances are unusually *long* (mean 11.6 words vs 8.1 overall; 29 of the
+  50 have 11+ words, of which 3.4% are recalled) and situational rather than
+  lexical -- "there's no way Joey's gonna make it in time", "Monica kinda
+  trusted me with something and she shouldn't have!" -- so what marks them as
+  fear is the surrounding situation, not any local word, and agitated ones
+  ("I'm freaking out!") sound like anger.
+* *Disgust* (68 test utterances): predicted 31 times overall but only 7
+  correct; true Disgust goes to neutral (35%) and anger (34%). Sarcastic or
+  contemptuous remarks look like anger on the surface; interjections like
+  "Ewww!" are rare.
+
+This is the motivation for putting dialogue context inside the encoder
+(next): the information that distinguishes these classes is mostly in the
+neighbouring lines, which an isolated-utterance encoder never sees. A
+one-parameter minority-class prior correction (divide probabilities by
+class-prior^tau, tau fit on validation) was also tried on the chosen
+ensemble: validation selects tau = 0 (no correction). As a pure operating
+point it trades overall accuracy for minority recall -- at tau = 0.4, test
+macro F1 rises from 44.6% to 46.4% while accuracy falls from 66.5% to 63.6%
+-- which is worth knowing but is not an improvement on the project's
+selection metric.
+
 **Seed noise, measured.** Four seeds each of the current-recipe DistilBERT
 (D) and RoBERTa-large (F) frozen-feature models were trained on Kaggle's GPU
 (`TRAIN_SEED`; `evaluation/seed_stats.py`, `logs/seed_stats_output.log`):
