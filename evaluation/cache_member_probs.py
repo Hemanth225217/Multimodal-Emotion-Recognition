@@ -9,7 +9,9 @@ Usage:
   python -m evaluation.cache_member_probs NAME finetune CKPT
 
 Writes logs/prob_cache/NAME.pt = {"val": [N,7], "test": [N,7],
-"val_labels": [...], "test_labels": [...], "meta": {...}}. Validation and
+"val_labels": [...], "test_labels": [...], "val_sizes": [...],
+"test_sizes": [...] (utterances per dialogue, for the dialogue-level bootstrap),
+"meta": {...}}. Validation and
 test dialogue order is identical across member types (verified separately
 for FinetuneMELDDataset vs MELDDataset), and evaluation/ensemble_from_cache.py
 asserts every member's labels match exactly before combining anything.
@@ -41,17 +43,18 @@ def frozen_probs(checkpoint_path, features, split):
     model, meta = load_model(Path(checkpoint_path))
     use_speaker = "num_speaker_slots" in meta
     dataset = MELDDataset(split=split, text_path=FEATURE_PATHS[features], use_legacy_audio=True)
-    labels, probs = [], []
+    labels, probs, sizes = [], [], []
     for i in range(len(dataset)):
         sample = dataset[i]
         labels.extend(sample["labels"].tolist())
+        sizes.append(len(sample["labels"]))
         text = sample["text"].unsqueeze(0).to(DEVICE, dtype=torch.float32)
         audio = sample["audio"].unsqueeze(0).to(DEVICE, dtype=torch.float32)
         video = sample["video"].unsqueeze(0).to(DEVICE, dtype=torch.float32)
         slots = sample["speaker_slots"].unsqueeze(0).to(DEVICE, dtype=torch.long) if use_speaker else None
         logits = model(text, audio, video, speaker_slots=slots).reshape(-1, NUM_CLASSES)
         probs.append(torch.softmax(logits, dim=-1).cpu())
-    return torch.cat(probs, dim=0), labels, {"val_epoch_in_ckpt": meta.get("epoch")}
+    return torch.cat(probs, dim=0), labels, sizes, {"val_epoch_in_ckpt": meta.get("epoch")}
 
 
 @torch.no_grad()
@@ -59,17 +62,18 @@ def finetune_probs(checkpoint_path, split, encoder, model):
     from training.dataset_finetune import FinetuneMELDDataset
 
     dataset = FinetuneMELDDataset(split=split)
-    labels, probs = [], []
+    labels, probs, sizes = [], [], []
     for i in range(len(dataset)):
         sample = dataset[i]
         labels.extend(sample["labels"].tolist())
+        sizes.append(len(sample["labels"]))
         audio = sample["audio"].unsqueeze(0).to(DEVICE, dtype=torch.float32)
         video = sample["video"].unsqueeze(0).to(DEVICE, dtype=torch.float32)
         slots = sample["speaker_slots"].unsqueeze(0).to(DEVICE, dtype=torch.long)
         text = encoder(sample["texts"], DEVICE, speaker_slots=sample["speaker_slots"])
         logits = model(text, audio, video, speaker_slots=slots).reshape(-1, NUM_CLASSES)
         probs.append(torch.softmax(logits, dim=-1).cpu())
-    return torch.cat(probs, dim=0), labels
+    return torch.cat(probs, dim=0), labels, sizes
 
 
 def main():
@@ -89,8 +93,8 @@ def main():
             raise SystemExit("--features is required for frozen members (768 is ambiguous: roberta vs distilbert)")
         result["meta"]["features"] = args.features
         for split in ("val", "test"):
-            probs, labels, extra = frozen_probs(args.checkpoint, args.features, split)
-            result[split], result[f"{split}_labels"] = probs, labels
+            probs, labels, sizes, extra = frozen_probs(args.checkpoint, args.features, split)
+            result[split], result[f"{split}_labels"], result[f"{split}_sizes"] = probs, labels, sizes
             result["meta"].update(extra)
     else:
         from models.fusion_model import MultimodalFusionModel
@@ -113,8 +117,8 @@ def main():
             "context_past": ckpt.get("context_past", 0), "context_future": ckpt.get("context_future", 0),
         })
         for split in ("val", "test"):
-            probs, labels = finetune_probs(args.checkpoint, split, encoder, model)
-            result[split], result[f"{split}_labels"] = probs, labels
+            probs, labels, sizes = finetune_probs(args.checkpoint, split, encoder, model)
+            result[split], result[f"{split}_labels"], result[f"{split}_sizes"] = probs, labels, sizes
 
     torch.save(result, out_path)
     print(f"Saved {out_path}: val {tuple(result['val'].shape)}, test {tuple(result['test'].shape)}")

@@ -36,7 +36,6 @@ from sklearn.metrics import accuracy_score, f1_score, classification_report
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config import EMOTION_NAMES, NUM_CLASSES
-from training.dataset import MELDDataset
 
 CACHE_DIR = Path(__file__).resolve().parent.parent / "logs" / "prob_cache"
 AMB_DSGDN = {"accuracy": 0.6607, "weighted_f1": 0.6618}
@@ -66,17 +65,27 @@ def fmt(m):
     return f"{m['accuracy']*100:5.2f}% / {m['weighted_f1']*100:5.2f}% / {m['macro_f1']*100:5.2f}%"
 
 
+# Training-split class counts (neutral, surprise, fear, sadness, joy, disgust,
+# anger), printed by the training scripts as "Class distribution". Stored here
+# so the optional prior correction needs no dataset files.
+TRAIN_CLASS_COUNTS = [4709, 1205, 268, 684, 1743, 271, 1108]
+
+_DIALOGUE_SIZES = {}
+
+
 def dialogue_sizes(split):
+    """Utterances per dialogue, for the dialogue-level bootstrap. Taken from
+    the caches (so the committed caches reproduce everything standalone);
+    caches written before sizes were stored fall back to the dataset files."""
+    if split in _DIALOGUE_SIZES:
+        return _DIALOGUE_SIZES[split]
+    from training.dataset import MELDDataset
     dataset = MELDDataset(split=split)
     return [len(dataset[i]["labels"]) for i in range(len(dataset))]
 
 
 def train_class_priors():
-    dataset = MELDDataset(split="train")
-    counts = torch.zeros(NUM_CLASSES)
-    for i in range(len(dataset)):
-        for label in dataset[i]["labels"].tolist():
-            counts[label] += 1
+    counts = torch.tensor(TRAIN_CLASS_COUNTS, dtype=torch.float32)
     return counts / counts.sum()
 
 
@@ -152,6 +161,12 @@ def main():
         assert entry["val_labels"] == ref["val_labels"], f"val label mismatch for {name}"
         assert entry["test_labels"] == ref["test_labels"], f"test label mismatch for {name}"
     val_labels, test_labels = ref["val_labels"], ref["test_labels"]
+    for split in ("val", "test"):
+        if all(entry.get(f"{split}_sizes") is not None for entry in cache.values()):
+            sizes = ref[f"{split}_sizes"]
+            assert sum(sizes) == len(ref[f"{split}_labels"]), f"{split} dialogue sizes do not match the labels"
+            assert all(entry[f"{split}_sizes"] == sizes for entry in cache.values()),                 f"{split} dialogue sizes differ between members"
+            _DIALOGUE_SIZES[split] = sizes
 
     probs = {"val": {}, "test": {}}
     for c in candidates:

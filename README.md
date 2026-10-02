@@ -693,8 +693,10 @@ Results over these five members (`logs/ensemble_from_cache_originals_pool.log`):
 | B + D + F + H2 + H3 | none (all members) | 66.34 / 64.19 / 46.84 | **66.63 / 64.83 / 44.73** |
 | B + D + H2 + H3 | best of 31 subsets *on test* (optimistic, not a valid headline) | 65.52 / 63.83 / 48.05 | 67.09 / 65.63 / 45.81 |
 
-Reproduce the table above from the committed probability caches (no
-checkpoints or GPU needed, about a minute):
+Reproduce the table above from the committed probability caches -- no
+checkpoints, no GPU and no MELD data files needed (the caches carry the
+labels and dialogue boundaries; verified by running it with the dataset
+module made un-importable), about a minute:
 
 ```bash
 venv/Scripts/python.exe -m evaluation.ensemble_from_cache     --candidates B,D_orig,F_orig,H2_base,H3_large --reference B
