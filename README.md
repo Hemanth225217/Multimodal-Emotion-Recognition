@@ -32,23 +32,30 @@ the fusion model's confidence and correctness (`evaluation/disagreement_analysis
 
 ## Honesty notes (please read before citing numbers from this repo)
 
-- **Features are pre-extracted, not end-to-end.** Text (768-D) comes from
-  frozen DistilBERT (mean-pooled token embeddings, no fine-tuning --
-  `modules/text_features_distilbert.py`). Audio (300-D) still comes from the
-  original MELD baseline paper's released `MELD.Features.Models` package
-  (openSMILE-style features) -- its extractor was never publicly released, so
-  it can't be swapped the same way. Video features (512-D) are extracted
-  locally with a frozen ImageNet ResNet-18 (8 sampled frames, mean-pooled)
-  because the project's hardware (Intel Core Ultra 5 225U, no CUDA GPU) can't
-  run a ViT extraction pipeline in reasonable time. Accurately: *"a
-  multimodal deep-learning framework using frozen pretrained text embeddings,
-  pre-extracted acoustic features, and locally extracted visual
-  representations, followed by BiLSTM temporal encoding, cross-modal
-  attention, adaptive fusion, and conversational context modelling."* Text
-  was originally also a 2018-era task-specific CNN feature (600-D, same
-  package as audio) -- swapping it for DistilBERT lifted accuracy from
-  58.35% to 61.69% (see Results); `modules/data_loader.py` keeps the
-  original loader available (`load_original_text_features()`) for comparison.
+- **Most of the pipeline uses pre-extracted features; only the text encoder
+  is ever fine-tuned.** Text comes from pretrained transformers. The
+  single-model demo checkpoint (B) uses frozen RoBERTa-base mean-pooled
+  embeddings (`modules/text_features_roberta.py`); other ensemble members use
+  frozen DistilBERT or RoBERTa-large features; and two members fine-tune
+  RoBERTa-base / RoBERTa-large end to end with their bottom layers frozen
+  (`training/train_finetune.py`, trained on Kaggle's free T4 GPU). Audio
+  (300-D) still comes from the original MELD baseline paper's released
+  `MELD.Features.Models` package (openSMILE-style features) -- its extractor
+  was never publicly released, so it can't be swapped the same way; a
+  Wav2Vec2-base replacement was tried and did not beat it. Video features
+  (512-D) are extracted locally with a frozen ImageNet ResNet-18 (8 sampled
+  frames, mean-pooled). The laptop (Intel Core Ultra 5 225U, no CUDA GPU)
+  trained the early models; fine-tuning and later retraining used Kaggle's
+  GPU. Accurately: *"a multimodal deep-learning framework using pretrained
+  text encoders (frozen or partially fine-tuned), pre-extracted acoustic
+  features, and locally extracted visual representations, followed by
+  BiLSTM temporal encoding, cross-modal attention, adaptive fusion, and
+  conversational context modelling, with the best results coming from an
+  ensemble of such models."* Text was originally also a 2018-era
+  task-specific CNN feature (600-D, same package as audio) -- swapping it for
+  DistilBERT lifted accuracy from 58.35% to 61.69% (see Results);
+  `modules/data_loader.py` keeps the original loader available
+  (`load_original_text_features()`) for comparison.
 - **The web demo browses real MELD test examples, not arbitrary uploads --
   specifically because of audio, not text anymore.** DistilBERT is a public
   model, so arbitrary new text *could* now be embedded into a compatible
@@ -58,16 +65,19 @@ the fusion model's confidence and correctness (`evaluation/disagreement_analysis
   Every prediction in the demo is a genuine forward pass through the trained
   model on a real test utterance, including the missing-modality toggle (it
   actually zeroes that modality's input tensor and re-runs the model) --
-  nothing is mocked or pre-computed.
+  nothing is mocked or pre-computed. The demo serves the single model B
+  (62.45% / 61.50%), not the ensemble reported in the Results section.
 - **The model does not solve all seven emotions equally well.** Fear and
-  disgust have very little training data (~2.7% each). Disgust F1 is exactly
-  0 across every version of this project, historical or current -- the model
-  never once predicts it. Fear F1 was also exactly 0 in every version until
-  the DistilBERT text upgrade, which got it to a still-poor-but-nonzero
-  0.092 (3/50 correctly classified). See `evaluation/evaluate_final.py` for
-  the full per-class breakdown. The project's contribution is the
-  fusion/context/adaptive-weighting/disagreement architecture and analysis,
-  not a claim of uniformly solved emotion recognition.
+  disgust have very little training data (~2.7% each) and remain the weak
+  classes. In the best ensemble Fear F1 is 0.07 (2 of 50 test utterances
+  right) and Disgust F1 is 0.14; individual models sometimes score exactly 0
+  on one of them (Fear in the RoBERTa-large fine-tune, Disgust in several
+  earlier versions), and two attempts to fix this (a heavier layer freeze and
+  stronger class weights) did not help. See `evaluation/evaluate_final.py`
+  and the ensemble section for per-class breakdowns. The project's
+  contribution is the fusion/context/adaptive-weighting/disagreement
+  architecture and analysis, not a claim of uniformly solved emotion
+  recognition.
 - **The adaptive weighting network initially collapsed onto text ("modality
   collapse"), and fixing it took five training runs -- documented here rather
   than quietly overwritten, because the failed attempts are informative.**
@@ -800,19 +810,33 @@ see `.gitignore`); pre-extracted features live under `meld_features/`.
 config.py                    Central config: dims, paths, emotion names, seed
 models/
   fusion_model.py             Adaptive tri-modal fusion architecture (the model)
+  finetune_text_encoder.py    Trainable text encoders: isolated-utterance and
+                              context-aware (neighbouring lines in the transformer)
+  graph_fusion.py             Graph-attention fusion layer (tried; did not help)
   baseline_model.py           Original bimodal baseline (reconstructed from checkpoint)
-  final_model.pt               Trained final checkpoint
+  final_model.pt               Checkpoint B -- the single model the demo serves
   baseline_model.pt            Trained baseline checkpoint
   legacy/                      Archived V1-V4 checkpoints + old model stub files
 training/
   dataset.py                   MELDDataset: aligns text/audio/video/labels per dialogue
-  train_final.py                Single canonical training script -> final_model.pt
+  train_final.py                Frozen-feature training script -> final_model.pt (env overrides:
+                                TRAIN_TEXT_PATH/DIM, TRAIN_SEED, TRAIN_OUTPUT_PATH)
+  train_finetune.py             End-to-end text fine-tuning (layer freezing, optional
+                                dialogue context window, seeds; GPU recommended)
+  dataset_finetune.py           Dataset variant yielding raw utterance text for fine-tuning
   legacy/                      Archived baseline/V2/V3/V4 training scripts
 evaluation/
   evaluate_final.py             Overall + per-class metrics + confusion matrix
   evaluate_baseline.py          Same, for the baseline model
   modality_ablation.py          All 7 modality-combination results
   disagreement_analysis.py      Modality agreement/disagreement + adaptive-weight analysis
+  cache_member_probs.py         Cache one member's val/test probabilities (logs/prob_cache/)
+  ensemble_from_cache.py        Honest ensemble analysis: pick on validation, test once,
+                                bootstrap CIs, paired comparison, optional prior correction
+  seed_stats.py                 Seed-to-seed spread and seed-averaging for a model family
+  evaluate_finetune.py          Test metrics for a fine-tuned checkpoint
+  weighted_ensemble_test.py     Fitted ensemble weights (tried; overfit validation)
+  ensemble_test.py              Original equal-weight subset sweep (selects on test; see README)
   metrics.py                    Shared metric helpers
   legacy/                      Archived old evaluation scripts (one had a dead import)
 modules/
