@@ -61,3 +61,4 @@ Thumbs.db
 models/final_model_finetuned*.pt
 models/checkpoint_*.pt
 models/ft_*.pt
+models/originals/

@@ -103,11 +103,35 @@ def bootstrap_ci(labels, preds, sizes, samples=BOOTSTRAP_SAMPLES, seed=BOOTSTRAP
     return (np.percentile(accs, [2.5, 97.5]), np.percentile(wf1s, [2.5, 97.5]))
 
 
+def paired_bootstrap_diff(labels, preds_a, preds_b, sizes, samples=BOOTSTRAP_SAMPLES, seed=BOOTSTRAP_SEED):
+    """Dialogue-level paired bootstrap of (A - B) for accuracy and weighted
+    F1, resampling the same dialogues for both so the comparison cancels the
+    noise they share. Returns (mean diff, 95% CI, P(diff > 0)) per metric."""
+    labels, a, b = np.asarray(labels), np.asarray(preds_a), np.asarray(preds_b)
+    offsets = np.concatenate([[0], np.cumsum(sizes)])
+    per_dialogue = [np.arange(offsets[i], offsets[i + 1]) for i in range(len(sizes))]
+    rng = np.random.default_rng(seed)
+    d_acc, d_wf1 = [], []
+    for _ in range(samples):
+        picked = rng.integers(0, len(sizes), size=len(sizes))
+        idx = np.concatenate([per_dialogue[i] for i in picked])
+        d_acc.append(accuracy_score(labels[idx], a[idx]) - accuracy_score(labels[idx], b[idx]))
+        d_wf1.append(f1_score(labels[idx], a[idx], average="weighted", zero_division=0)
+                     - f1_score(labels[idx], b[idx], average="weighted", zero_division=0))
+    out = {}
+    for name, d in (("accuracy", d_acc), ("weighted_f1", d_wf1)):
+        d = np.asarray(d)
+        out[name] = (d.mean(), np.percentile(d, [2.5, 97.5]), float((d > 0).mean()))
+    return out
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--candidates", required=True, help="comma-separated member/group names to enumerate subsets of")
     parser.add_argument("--group", action="append", default=[], help="NAME=m1,m2,... seed-average virtual member")
     parser.add_argument("--min-size", type=int, default=1)
+    parser.add_argument("--reference", default=None,
+                        help="cached member to compare the chosen ensemble against with a paired bootstrap (e.g. B)")
     parser.add_argument("--tau", action="store_true",
                         help="also fit a single minority-class prior-correction exponent on validation")
     args = parser.parse_args()
@@ -169,6 +193,19 @@ def main():
           f"weighted F1 {'INSIDE' if wf1_ci[0] <= AMB_DSGDN['weighted_f1'] <= wf1_ci[1] else 'outside'} our CI")
     print(classification_report(test_labels, preds, labels=list(range(NUM_CLASSES)),
                                 target_names=EMOTION_NAMES, digits=4, zero_division=0))
+
+    if args.reference:
+        ref_name = args.reference
+        if ref_name not in probs["test"]:
+            ref_cache = load_cache([ref_name])[ref_name]
+            ref_preds = ref_cache["test"].argmax(-1).tolist()
+        else:
+            ref_preds = probs["test"][ref_name].argmax(-1).tolist()
+        diff = paired_bootstrap_diff(test_labels, preds, ref_preds, dialogue_sizes("test"))
+        print(f"=== PAIRED BOOTSTRAP: chosen ensemble minus {ref_name} (test, dialogue-level) ===")
+        for metric, (mean, ci, p_pos) in diff.items():
+            print(f"  {metric:<12} mean {mean*100:+.2f} pts   95% CI [{ci[0]*100:+.2f}, {ci[1]*100:+.2f}]   "
+                  f"P(ensemble better) = {p_pos:.3f}")
 
     if args.tau:
         priors = train_class_priors()

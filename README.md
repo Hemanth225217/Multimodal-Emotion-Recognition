@@ -129,29 +129,33 @@ included).
 | Ensemble: RoBERTa (no speaker) + RoBERTa+speaker, avg softmax | 63.18% | 62.45% | 45.38% |
 | Ensemble: + DistilBERT (B+C+D, seed variant + DistilBERT) | 64.56% | 63.60% | **46.01%** |
 | Ensemble: B + DistilBERT + RoBERTa-large (B+D+F) | 65.56% | 63.90% | 44.57% |
-| Ensemble: B + DistilBERT + fine-tuned RoBERTa (B+D+H) | 65.98% | **64.56%** | 45.28% |
-| **Ensemble: B+D+F + fine-tuned RoBERTa (B+D+F+H)** | **66.36%** | 64.55% | 44.96% |
-| Ensemble: B + fine-tuned RoBERTa-large (B+H, improved fine-tune) | 64.98% | 63.76% | 43.83% |
-| Ensemble: B+D+F (retrained) + fine-tuned RoBERTa-large | 65.56% | 64.16% | **45.27%** |
+| Ensemble: B + DistilBERT + fine-tuned RoBERTa (B+D+H) | 65.98% | 64.56% | 45.28% |
+| Ensemble: B+D+F + fine-tuned RoBERTa (B+D+F+H), best of several subsets on test | 66.36% | 64.55% | 44.96% |
+| Ensemble: B + fine-tuned RoBERTa-large (B+H3) | 64.98% | 63.76% | 43.83% |
+| Ensemble: B+D'+F' (current-recipe retrains) + H3 | 65.56% | 64.16% | 45.27% |
+| **Ensemble: B + D + F + H2 + H3, all five, equal weight, no selection** | **66.63%** | **64.83%** | 44.73% |
+| Ensemble: D + F + H3, subset chosen on validation, test looked at once | 66.48% | 64.74% | 44.59% |
 
-The best-ever *verified* result (bolded) is the 4-member ensemble
-B+D+F+H, which beats AMB-DSGDN's reported accuracy (66.07%) for the first
-time this project has managed it -- even though H alone (62.57%/61.50%)
-never beat B+D+F alone, it disagreed with the frozen members often enough
-in the right places to help the vote. This is the same "different features
-help, identical recipes don't" pattern as the rest of the ensembling work,
-just with "fine-tuned vs. frozen" as the source of diversity instead of
-"different text encoder." The checkpoints behind that exact row are no
-longer saved locally, though, and a since-improved fine-tuned checkpoint
-(RoBERTa-large, layer-frozen, see "End-to-end text fine-tuning" below)
-turned out NOT to reproduce or beat it once paired with freshly retrained
-D/F -- the last row above. That's a real, instructive negative result, not
-a discarded one: it shows ensemble scores depend on the specific trained
-instance of each member, not just which recipe it came from -- see
-"Re-verification attempt" below for why. The second-to-last row (B alone
-plus the improved fine-tune, no D/F) is a genuinely new best 2-member
-result, though. See "Base paper comparison" below for the full path here,
-including a real bug that was caught and fixed along the way.
+**Read this table with the confidence intervals in mind.** On 2,610 test
+utterances the 95% dialogue-level bootstrap interval for any of the
+ensemble rows is about +/-2.1 points on accuracy and +/-2.3 on weighted F1
+(the validation-chosen row: accuracy [64.33%, 68.61%], weighted F1
+[62.44%, 67.07%]). AMB-DSGDN's reported 66.07% / 66.18% sits *inside* both
+intervals, so the honest summary is "statistically indistinguishable from
+AMB-DSGDN, with point estimates of +0.4 points on accuracy and -1.4 on
+weighted F1" -- not "beats it". What the data does show decisively is that
+ensembling helps: the validation-chosen ensemble beats the single model B
+by +4.0 accuracy points (95% CI +2.6 to +5.5) and +3.2 weighted-F1 points
+(CI +1.8 to +4.8). The two bolded/bottom rows are the numbers to quote: the
+five-member average involves no selection at all (every available member,
+equal weight), and the last row picks its three members on *validation*
+and looks at test once. The row marked "best of several subsets on test"
+is the project's earlier headline (66.36%): it is a real measurement, but
+it was the maximum over several ensembles scored on the very test set it
+is reported on, which biases it upward, and its H member (the full
+fine-tune of RoBERTa-base) is not retained as a file. See "Ensemble results
+under an honest selection protocol" below for how the bottom rows were
+produced.
 
 The bolded row is the current model. Speaker-aware modeling is the first
 change this session to move accuracy meaningfully (+1.49 points) rather than
@@ -484,17 +488,17 @@ accuracy / 63.50% weighted F1 / 44.16% macro F1**, again beating the
 equivalent pairing with the full-fine-tune checkpoint (64.79%/63.36%/43.76%)
 on every metric. This checkpoint (referred to as H below) supersedes the
 full-fine-tuning one as this project's fine-tuned member going forward --
-strictly better in every configuration actually measured. **Honest caveat:**
-the frozen DistilBERT (D) and RoBERTa-large (F) checkpoints used in the
-B+D+F+H four-member ensemble below predate this checkpoint and are no
-longer saved on disk (only B is kept permanently; D/F/G were evaluated and
-not kept, consistent with how this project only retains the standing-best
-checkpoint locally), so the full four-way combination has not been
-re-verified with this improved fine-tuned member -- retraining D and F
-would be needed to check whether it pushes the four-way ensemble's 66.36%/
-64.55% any further, and that has not been done. The B+D+F+H number below
-reflects the specific (superseded) fine-tuned checkpoint that was actually
-in that combination when it was measured.
+strictly better in every configuration actually measured. **Correction
+(added later):** an earlier version of this paragraph said the frozen
+DistilBERT (D) and RoBERTa-large (F) checkpoints behind the B+D+F+H result
+were "no longer saved anywhere". That was wrong -- they were sitting inside
+`MELD_best_ensemble_checkpoints.zip` (made on 2026-09-27) and were missed
+because the search only looked for loose `.pt` files, never inside zip
+archives. They are restored under `models/originals/` and the ensemble is
+re-evaluated with them in the "Ensemble results under an honest selection
+protocol" section below. (The original *H*, the full-fine-tune RoBERTa-base
+checkpoint, really was deleted and is not recoverable as a file; see that
+section for how it can be regenerated.)
 
 **Follow-up 2: the same recipe on RoBERTa-large -- AMB-DSGDN's actual text
 encoder -- produces the best single model this project has ever trained,
@@ -545,55 +549,47 @@ one's to be useful, even though its solo score is unremarkable. Full sweep
 in `logs/ensemble_test_with_finetune_output.log`. The standing best result
 is now **B+D+F+H by accuracy, or B+D+H by weighted F1/macro F1**.
 
-**Re-verification attempt: retraining D and F to pair with the improved
-fine-tuned checkpoint did not beat the record above, and shows why.** The
-66.36%/64.55% result used specific D and F checkpoint files that are no
-longer saved anywhere (only B is kept permanently), so it couldn't be
-directly re-tested with H3 (the RoBERTa-large fine-tune above, which beats
-the original H in every configuration measured). Retrained both fresh on
-Kaggle's GPU to check anyway -- D in 6.6 min (best val weighted F1 0.5840),
-F in 8.2 min (0.5816) -- using new environment-variable overrides added to
-`train_final.py` (`TRAIN_TEXT_DIM`, `TRAIN_TEXT_PATH`, `TRAIN_OUTPUT_PATH`,
-`TRAIN_USE_LEGACY_AUDIO`; unset, behavior is unchanged) so this didn't
-require touching config.py's defaults. Real result with the fresh
-checkpoints and H3: **B+D+F+H reaches 65.56% accuracy / 64.16% weighted F1
-/ 45.27% macro F1** -- macro F1 is a new best, but accuracy and weighted F1
-both fall *short* of the original 66.36%/64.55%, despite H3 being a
-strictly better fine-tuned member than the original H. Why: the retrained
-F scores only 60.00%/59.98%/42.36% solo, well below the original F's
-63.41%/60.85%/39.17% (see the isolation-result note above). **Correction
-to an earlier version of this paragraph:** that solo score is *identical*
-to checkpoint G's (the earlier same-recipe GPU run), and an earlier draft
-of this note read the two as independent GPU samples pointing to a
-systematic GPU effect. They aren't independent -- a follow-up that
-retrained D and F two more times each found every run bit-identical to the
-first (all 105 weight tensors equal, zero difference), so Kaggle GPU
-training of this seeded recipe is fully deterministic and F, G and the
-retrained F are one and the same run. There is one GPU sample, not two.
-What the evidence actually establishes is narrower but still important:
-the *same* seeded recipe reaches 63.41% accuracy on CPU and 60.00% on GPU
--- a 3.4-point gap from floating-point differences alone, amplified over
-15+ epochs of training. **Single-run results for this recipe therefore
-carry several points of seed/platform noise**, which means small margins
-(including this project's 0.29-point accuracy edge over AMB-DSGDN, and the
-66.36% figure itself, which came from one lucky-or-unlucky set of
-instances) should not be over-read. Ensemble results depend on the
-specific trained instance of each member, not just which recipe it came
-from -- swapping in a better fine-tuned model doesn't guarantee a better
-ensemble if the frozen members it's combined with happen to be weaker
-instances than before. Getting genuinely different instances (rather than
-re-running a deterministic one) requires varying the seed explicitly,
-which this repo now supports via `TRAIN_SEED`.
-Other combinations from this re-verification: B+H alone reaches 64.98%/
-63.76%/43.83% (a new best 2-member result, see above), B+D+H reaches
-65.79%/64.05%/42.98%, B+F+H reaches 64.67%/63.59%/45.24%. **The 66.36%
-accuracy / 64.55% weighted F1 result stands as the project's best verified
-result** -- it was genuinely measured and reported at the time, the same
-as every superseded run kept in this file's history, even though the exact
-checkpoints behind it are gone. Full sweep in
-`logs/ensemble_test_full_reverify_output.log`; retrained checkpoints kept
-locally as `models/checkpoint_d_retrained.pt` / `checkpoint_f_retrained.pt`
-(gitignored, consistent with every other non-standing-best checkpoint).
+**First re-verification attempt (retraining D and F): superseded, kept for
+the record because the mistakes in it are instructive.** At the time, the
+original D and F checkpoints behind the 66.36%/64.55% result were believed
+lost (they were not -- see the correction above and the next section), so D
+and F were retrained on Kaggle's GPU to pair them with H3 (the RoBERTa-large
+fine-tune): D in 6.6 min (best val weighted F1 0.5840), F in 8.2 min
+(0.5816), via new environment-variable overrides in `train_final.py`
+(`TRAIN_TEXT_DIM`, `TRAIN_TEXT_PATH`, `TRAIN_OUTPUT_PATH`,
+`TRAIN_USE_LEGACY_AUDIO`; unset, behavior is unchanged). Result:
+**B+D'+F'+H3 reached 65.56% accuracy / 64.16% weighted F1 / 45.27% macro
+F1**, below the original 66.36%/64.55%. Three facts, established later,
+change how that should be read:
+
+* **The retrained D was not the same recipe as the original D.** The
+  original D was an older recipe (DistilBERT features, no speaker
+  embeddings; solo 61.23%/60.43%, run8 in `logs/`); the retrain used the
+  *current* speaker-aware recipe. They are different models, so no
+  conclusion about "variance" can be drawn from comparing them.
+* **The retrained F was the same recipe as the original F** (CPU run20):
+  epoch 1 is nearly identical (train loss 0.9696 vs 0.9668, train accuracy
+  0.481 vs 0.483) and the two then drift apart (val weighted F1 at epoch 3:
+  0.530 vs 0.554), ending at 63.41% vs 60.00% test accuracy. Same seed,
+  same code, different platform: the dropout masks come from different
+  random streams on CPU and GPU and the floating-point numerics differ,
+  and that is enough to send a 15+-epoch run somewhere several points
+  away. **A single trained instance of this recipe therefore carries
+  several points of run-to-run noise.**
+* **GPU retraining is deterministic for a fixed seed.** Retraining D and F
+  two more times each (meant as a "multi-seed" check) gave checkpoints
+  bit-identical to the first (all 105 weight tensors equal, zero
+  difference), and the retrained F's solo score is *identical* to
+  checkpoint G's from an earlier GPU run -- F', G and the repeats are one
+  and the same run. An earlier draft of this note read F' and G as two
+  independent GPU samples pointing to a systematic GPU effect; that was
+  wrong. Different instances need a different seed, which `TRAIN_SEED` now
+  provides.
+
+The practical consequence for reading *any* number in this file: margins of
+a point or two between single runs are inside run-to-run noise, which is
+why the ensemble analysis below reports bootstrap confidence intervals.
+Full sweep in `logs/ensemble_test_full_reverify_output.log`.
 
 **Weighted ensembling: tried properly, and it overfits the validation set.**
 Every ensemble result above averages member probabilities with equal
@@ -620,40 +616,102 @@ temperature scaling also not helping earlier
 (`evaluation/calibrated_ensemble_test.py`). Full output in
 `logs/weighted_ensemble_test_output.log`.
 
+### Ensemble results under an honest selection protocol
+
+Every ensemble number earlier in this file was produced the same way: score
+many subsets on the test set and report the best one. That is a winner's-
+curse bias -- the maximum of many noisy estimates is optimistic -- and it
+is how the 66.36% headline arose. This section redoes the analysis with a
+protocol that cannot flatter the result:
+
+1. **Cache each member's predictions once**
+   (`evaluation/cache_member_probs.py`; a fine-tuned member costs 10-20
+   minutes of CPU encoding, so everything afterwards works on stored
+   validation/test probabilities in `logs/prob_cache/`, which are small and
+   committed so the numbers below can be reproduced without any
+   checkpoint).
+2. **Choose the ensemble on validation** (`evaluation/ensemble_from_cache.py`):
+   every subset of the candidate members is scored there, the subset with
+   the best validation weighted F1 is the one reported, and its test score
+   is looked at once. The best-on-test subset is also printed but labelled
+   optimistic. A selection-free alternative -- average *all* members -- is
+   reported alongside.
+3. **Report uncertainty** with a dialogue-level bootstrap (whole dialogues
+   are resampled, since utterances inside one are not independent) and a
+   paired bootstrap against single models.
+
+Members (test accuracy / weighted F1 / macro F1; all trained on the training
+split only):
+
+| Member | What it is | Test |
+|---|---|---|
+| B | RoBERTa-base frozen features + speaker embeddings (`models/final_model.pt`) | 62.45 / 61.50 / 42.74 |
+| D | DistilBERT frozen features, older non-speaker recipe | 61.23 / 60.43 / 41.44 |
+| F | RoBERTa-large frozen features, graph fusion off | 63.41 / 60.85 / 39.17 |
+| H2 | RoBERTa-base fine-tuned, bottom 8/12 layers frozen | 62.57 / 61.66 / 42.02 |
+| H3 | RoBERTa-large fine-tuned, bottom 16/24 layers frozen | 64.18 / 63.32 / 43.57 |
+
+The original D, F and B were recovered from `MELD_best_ensemble_checkpoints.zip`
+(restored under `models/originals/`; B is bit-identical to `final_model.pt`).
+
+Results over these five members (`logs/ensemble_from_cache_originals_pool.log`):
+
+| Ensemble (equal-weight average) | Selection | Validation | Test |
+|---|---|---|---|
+| D + F + H3 | best of 31 subsets on validation | 66.70 / 64.74 / 48.28 | **66.48 / 64.74 / 44.59** |
+| B + D + F + H2 + H3 | none (all members) | 66.34 / 64.19 / 46.84 | **66.63 / 64.83 / 44.73** |
+| B + D + H2 + H3 | best of 31 subsets *on test* (optimistic, not a valid headline) | 65.52 / 63.83 / 48.05 | 67.09 / 65.63 / 45.81 |
+
+Reproduce the table above from the committed probability caches (no
+checkpoints or GPU needed, about a minute):
+
+```bash
+venv/Scripts/python.exe -m evaluation.ensemble_from_cache     --candidates B,D_orig,F_orig,H2_base,H3_large --reference B
+```
+
+For the validation-chosen ensemble the 95% dialogue-bootstrap interval is
+accuracy [64.33%, 68.61%] and weighted F1 [62.44%, 67.07%]; AMB-DSGDN's
+reported 66.07% / 66.18% falls inside both. Against the single model B the
+improvement is +4.03 accuracy points (95% CI +2.59 to +5.52) and +3.24
+weighted-F1 points (CI +1.75 to +4.78). The honest reading: **this project's
+ensemble is statistically indistinguishable from AMB-DSGDN on both
+metrics**, with a point estimate slightly above on accuracy and about 1.4
+points below on weighted F1, and it is decisively better than any single
+model here. The weakest classes are unchanged: Fear (F1 0.07, recall 4%)
+and Disgust (F1 0.14) -- 50 and 68 test utterances respectively.
+
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
 on relative performance, differential graph attention, auxiliary unimodal
 losses) and the explicit target for this phase of work. Its reported MELD
 numbers: 66.07% accuracy / 66.18% weighted F1 (IEMOCAP: 76.09%/75.64%).
 
-**Honest verdict: accuracy now beats it; weighted F1 is close but still
-behind.** Best validated result is the 4-checkpoint ensemble (B + DistilBERT
-+ RoBERTa-large + fine-tuned RoBERTa, B+D+F+H): **66.36% accuracy -- 0.29
-points ABOVE AMB-DSGDN's 66.07%.** Weighted F1 is 64.55% on that same
-combination, or 64.56% on B+D+H -- **1.62-1.63 points behind** AMB-DSGDN's
-66.18%, narrowed from 2.28 points at the previous best (B+D+F) and from ~5
-points at the start of this session. This is a genuine, real result on
-accuracy -- not a rounding trick or a cherry-picked split, evaluated the
-same way as every other number in this file -- but weighted F1 (this
-project's own checkpoint-selection metric, and arguably the fairer measure
-on a 7-class dataset this imbalanced) still favors AMB-DSGDN. Six
-single-model or pipeline changes adapted from AMB-DSGDN's method helped
-(auxiliary unimodal losses, adaptive dropout, the RoBERTa-base and then
-RoBERTa-large text upgrades, dialogue-relative speaker embeddings, and
-end-to-end fine-tuning -- the last one only via ensembling, not solo); the
-speaker-relational attention bias (twice), sentiment loss (twice), per-batch
-dropout, and a full graph attention fusion layer all did not; ensembling --
-a technique AMB-DSGDN's paper doesn't use -- did, consistently, every time
-it combined genuinely different models rather than reseeded or re-trained
-copies of the same one. Not every idea inspired by a stronger paper
-transfers cleanly, and reporting the failures (including a real bug caught
-mid-session, see above) is as much part of the record as the successes.
-A later attempt to push past 66.36%/64.55% -- fine-tuning RoBERTa-large
-itself (AMB-DSGDN's actual encoder) and retraining D/F to re-verify the
-full ensemble -- produced this project's best-ever single model (64.18%/
-63.32% solo) and best-ever 2-member ensemble (B+H, 64.98%/63.76%), but did
-not beat the standing 66.36%/64.55% four-member result; see "Re-verification
-attempt" above for the honest reason why.
+**Honest verdict: statistically indistinguishable from AMB-DSGDN on both
+metrics, not a clear win.** The best result obtained *without* selecting on
+the test set is the equal-weight average of five members (B, D, F and the
+two fine-tuned encoders H2/H3): **66.63% accuracy / 64.83% weighted F1**;
+choosing the members on validation instead gives 66.48% / 64.74% (see
+"Ensemble results under an honest selection protocol"). Against AMB-DSGDN's
+66.07% / 66.18% that is about +0.4 points on accuracy and -1.4 on weighted
+F1 -- but on 2,610 test utterances the 95% bootstrap interval is roughly
++/-2 points, and AMB-DSGDN's numbers fall inside it on both metrics. So the
+defensible claim is *comparable performance*, reached with a much lighter
+pipeline (frozen features plus a layer-frozen fine-tune, trained on free GPU
+time), not that this project surpasses the paper. The project's earlier
+66.36% headline came from picking the best of several ensembles on the test
+set and shouldn't be quoted as a clean result. What *is* established
+decisively is the size of the ensembling gain over a single model (+4.0
+accuracy points, +3.2 weighted-F1 points over B, both with confidence
+intervals clear of zero). Six single-model or pipeline changes adapted from
+AMB-DSGDN's method helped (auxiliary unimodal losses, adaptive dropout, the
+RoBERTa-base and then RoBERTa-large text upgrades, dialogue-relative
+speaker embeddings, and end-to-end fine-tuning); the speaker-relational
+attention bias (twice), sentiment loss (twice), per-batch dropout alone, a
+full graph attention fusion layer, and fitted ensemble weights all did not.
+Not every idea inspired by a stronger paper transfers cleanly, and
+reporting the failures -- including a real bug caught mid-session, several
+of this project's own earlier misreadings, and the winner's-curse bias in
+the old headline -- is as much part of the record as the successes.
 
 **For broader context:** other 2024-2026 systems on this task report
 weighted F1 in the 66-74% range (MCN-CL 73.1%, AMuSE ~74%, AM2-EmoJE 71.98%,
