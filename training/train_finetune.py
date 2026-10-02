@@ -48,7 +48,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config import (
     AUDIO_DIM, VIDEO_DIM, NUM_CLASSES, NUM_SPEAKER_SLOTS,
-    NUM_SENTIMENT_CLASSES, EMOTION_NAMES, PROJECT_ROOT, SEED, DEVICE,
+    NUM_SENTIMENT_CLASSES, EMOTION_NAMES, PROJECT_ROOT, SEED as _CONFIG_SEED, DEVICE,
 )
 from training.dataset_finetune import FinetuneMELDDataset
 from training.train_final import (
@@ -68,6 +68,10 @@ FREEZE_LAYERS_OVERRIDE = os.environ.get("TRAIN_FREEZE_LAYERS")
 OUTPUT_PATH_OVERRIDE = os.environ.get("TRAIN_OUTPUT_PATH")
 FEAR_WEIGHT_BOOST = float(os.environ.get("TRAIN_FEAR_WEIGHT_BOOST", "1.0"))
 DISGUST_WEIGHT_BOOST = float(os.environ.get("TRAIN_DISGUST_WEIGHT_BOOST", "1.0"))
+# GPU training is deterministic for a fixed seed (verified: repeated retrains
+# of train_final.py recipes were bit-identical), so a different trained
+# instance needs a different seed.
+SEED = int(os.environ.get("TRAIN_SEED", _CONFIG_SEED))
 from models.fusion_model import MultimodalFusionModel
 from models.finetune_text_encoder import FinetuneTextEncoder
 
@@ -273,6 +277,8 @@ def main():
                     "use_graph_fusion": False,
                     "text_model_name": TEXT_MODEL_NAME,
                     "finetuned": True,
+                    "seed": SEED,
+                    "freeze_layers": FREEZE_LAYERS,
                     "emotion_names": EMOTION_NAMES,
                 },
                 FINETUNE_MODEL_PATH,

@@ -93,7 +93,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config import (
     TEXT_DIM as _CONFIG_TEXT_DIM, AUDIO_DIM, VIDEO_DIM, NUM_CLASSES, NUM_SPEAKER_SLOTS,
-    NUM_SENTIMENT_CLASSES, EMOTION_NAMES, FINAL_MODEL_PATH as _CONFIG_FINAL_MODEL_PATH, SEED, DEVICE,
+    NUM_SENTIMENT_CLASSES, EMOTION_NAMES, FINAL_MODEL_PATH as _CONFIG_FINAL_MODEL_PATH, SEED as _CONFIG_SEED, DEVICE,
 )
 from training.dataset import MELDDataset
 from models.fusion_model import MultimodalFusionModel
@@ -107,6 +107,10 @@ TEXT_DIM = int(os.environ.get("TRAIN_TEXT_DIM", _CONFIG_TEXT_DIM))
 TEXT_PATH = os.environ.get("TRAIN_TEXT_PATH")  # None -> MELDDataset/data_loader default (RoBERTa-large)
 USE_LEGACY_AUDIO = os.environ.get("TRAIN_USE_LEGACY_AUDIO", "1") != "0"
 FINAL_MODEL_PATH = Path(os.environ.get("TRAIN_OUTPUT_PATH", str(_CONFIG_FINAL_MODEL_PATH)))
+# Training on the GPU is fully deterministic for a fixed seed (three retrains
+# of D and F came out bit-identical), so a genuinely different trained
+# instance of the same recipe needs a different seed, not another run.
+SEED = int(os.environ.get("TRAIN_SEED", _CONFIG_SEED))
 
 EPOCHS = 25
 LEARNING_RATE = 3e-4

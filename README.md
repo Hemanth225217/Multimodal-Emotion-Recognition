@@ -419,8 +419,11 @@ itself needed zero changes. Confirmed real speedup: **8.3 minutes total,
 ~23s/epoch on a Tesla T4, versus 45-180+ seconds/epoch on CPU** -- roughly
 a 5-8x wall-clock improvement. Tested the resulting checkpoint (G, same
 RoBERTa-large recipe as F) both solo (60.00%/59.98%/42.36%, genuinely
-different from F despite identical code and seed -- GPU training isn't
-bit-exact reproducible, same as how different CPU seeds diverge) and as an
+different from F despite identical code and seed -- F was trained on CPU and
+G on the GPU, and the different floating-point numerics send the same
+seeded run down a different trajectory; this is a CPU-vs-GPU difference,
+not run-to-run randomness -- a later retrain on the same GPU reproduced G
+bit-for-bit, see the re-verification note below) and as an
 8th ensemble candidate: **it doesn't beat B+D+F in any combination**, same
 pattern as the seed-43/44 variants -- confirms again that same-recipe
 diversity (whether from a different seed or different hardware) isn't
@@ -558,21 +561,29 @@ checkpoints and H3: **B+D+F+H reaches 65.56% accuracy / 64.16% weighted F1
 both fall *short* of the original 66.36%/64.55%, despite H3 being a
 strictly better fine-tuned member than the original H. Why: the retrained
 F scores only 60.00%/59.98%/42.36% solo, well below the original F's
-63.41%/60.85%/39.17% (see the isolation-result note above) -- and matches,
-suspiciously closely, checkpoint G's solo score from the earlier
-same-recipe GPU retrain, both landing around 60%/60%/42% versus the
-original CPU-trained F's 63%/61%/39%. Two independent GPU retrains of the
-identical "RoBERTa-large recipe" both scoring several points lower than
-the original on accuracy and weighted F1, while both scoring *higher* on
-macro F1, looks like more than one-off noise -- something about training
-this specific recipe on GPU rather than CPU may systematically shift the
-accuracy/macro-F1 tradeoff, though the cause (numerics, effective batching,
-or just two unlucky seeds) isn't confirmed. Either way, this is a clean
-demonstration of a pattern this project has flagged before but never shown
-this starkly: **ensemble results depend on the specific trained instance
-of each member, not just which recipe it came from** -- swapping in a
-better fine-tuned model doesn't guarantee a better ensemble if the frozen
-members it's combined with happen to be weaker instances than before.
+63.41%/60.85%/39.17% (see the isolation-result note above). **Correction
+to an earlier version of this paragraph:** that solo score is *identical*
+to checkpoint G's (the earlier same-recipe GPU run), and an earlier draft
+of this note read the two as independent GPU samples pointing to a
+systematic GPU effect. They aren't independent -- a follow-up that
+retrained D and F two more times each found every run bit-identical to the
+first (all 105 weight tensors equal, zero difference), so Kaggle GPU
+training of this seeded recipe is fully deterministic and F, G and the
+retrained F are one and the same run. There is one GPU sample, not two.
+What the evidence actually establishes is narrower but still important:
+the *same* seeded recipe reaches 63.41% accuracy on CPU and 60.00% on GPU
+-- a 3.4-point gap from floating-point differences alone, amplified over
+15+ epochs of training. **Single-run results for this recipe therefore
+carry several points of seed/platform noise**, which means small margins
+(including this project's 0.29-point accuracy edge over AMB-DSGDN, and the
+66.36% figure itself, which came from one lucky-or-unlucky set of
+instances) should not be over-read. Ensemble results depend on the
+specific trained instance of each member, not just which recipe it came
+from -- swapping in a better fine-tuned model doesn't guarantee a better
+ensemble if the frozen members it's combined with happen to be weaker
+instances than before. Getting genuinely different instances (rather than
+re-running a deterministic one) requires varying the seed explicitly,
+which this repo now supports via `TRAIN_SEED`.
 Other combinations from this re-verification: B+H alone reaches 64.98%/
 63.76%/43.83% (a new best 2-member result, see above), B+D+H reaches
 65.79%/64.05%/42.98%, B+F+H reaches 64.67%/63.59%/45.24%. **The 66.36%
