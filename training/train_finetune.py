@@ -73,7 +73,14 @@ DISGUST_WEIGHT_BOOST = float(os.environ.get("TRAIN_DISGUST_WEIGHT_BOOST", "1.0")
 # instance needs a different seed.
 SEED = int(os.environ.get("TRAIN_SEED", _CONFIG_SEED))
 from models.fusion_model import MultimodalFusionModel
-from models.finetune_text_encoder import FinetuneTextEncoder
+from models.finetune_text_encoder import build_finetune_encoder
+
+# Dialogue context fed to the transformer itself (see
+# models/finetune_text_encoder.py's ContextFinetuneTextEncoder). 0/0 keeps
+# the original isolated-utterance behaviour exactly.
+CONTEXT_PAST = int(os.environ.get("TRAIN_CONTEXT_PAST", "0"))
+CONTEXT_FUTURE = int(os.environ.get("TRAIN_CONTEXT_FUTURE", "0"))
+MAX_TOTAL_LENGTH = int(os.environ.get("TRAIN_MAX_TOTAL_LENGTH", "192"))
 
 FINETUNE_MODEL_PATH = Path(OUTPUT_PATH_OVERRIDE) if OUTPUT_PATH_OVERRIDE else (
     PROJECT_ROOT / "models" / "final_model_finetuned_roberta_large.pt"
@@ -84,8 +91,13 @@ FINETUNE_MODEL_PATH = Path(OUTPUT_PATH_OVERRIDE) if OUTPUT_PATH_OVERRIDE else (
 # frozen only, as checkpoint F). Output path above is deliberately distinct
 # from final_model_finetuned.pt (the roberta-base layer-frozen result,
 # 62.57%/61.66%/42.02% -- see README) so this run can't clobber it.
-TEXT_MODEL_NAME = "roberta-large"
-TEXT_DIM = 1024  # roberta-large hidden size
+# TRAIN_TEXT_MODEL selects another encoder (e.g. roberta-base for the
+# faster context-window experiments).
+TEXT_HIDDEN_SIZES = {"roberta-base": 768, "roberta-large": 1024}
+TEXT_MODEL_NAME = os.environ.get("TRAIN_TEXT_MODEL", "roberta-large")
+if TEXT_MODEL_NAME not in TEXT_HIDDEN_SIZES:
+    raise SystemExit(f"TRAIN_TEXT_MODEL must be one of {sorted(TEXT_HIDDEN_SIZES)}, got {TEXT_MODEL_NAME!r}")
+TEXT_DIM = TEXT_HIDDEN_SIZES[TEXT_MODEL_NAME]
 
 EPOCHS = 10  # fine-tuned transformers converge (and overfit) faster than frozen-feature training
 TEXT_ENCODER_LR = 2e-5
@@ -129,7 +141,7 @@ def run_epoch(text_encoder, model, loader, criterion, optimizer=None, dropout_pr
             labels = sample["labels"].to(DEVICE, dtype=torch.long).reshape(-1)
             speaker_slots = sample["speaker_slots"].unsqueeze(0).to(DEVICE, dtype=torch.long)
 
-            text = text_encoder(texts, DEVICE)  # [1, U, 768], gradients flow into text_encoder
+            text = text_encoder(texts, DEVICE, speaker_slots=sample["speaker_slots"])  # [1, U, H], gradients flow into text_encoder
 
             if train_mode:
                 text, audio, video = apply_modality_dropout(text, audio, video, dropout_probs)
@@ -195,7 +207,9 @@ def run_epoch(text_encoder, model, loader, criterion, optimizer=None, dropout_pr
 
 def main():
     print("=" * 70)
-    print("FINE-TUNING TRAINING RUN -- live RoBERTa-base encoder, not frozen")
+    print(f"FINE-TUNING TRAINING RUN -- live {TEXT_MODEL_NAME} encoder, bottom {FREEZE_LAYERS} layers frozen")
+    print(f"Seed: {SEED}   Dialogue context window: past={CONTEXT_PAST} future={CONTEXT_FUTURE} "
+          f"(max {MAX_TOTAL_LENGTH} tokens)")
     print(f"Device: {DEVICE}   Text encoder: {TEXT_MODEL_NAME} (trainable)")
     print(f"Text encoder LR: {TEXT_ENCODER_LR}   Rest-of-model LR: {MODEL_LR}")
     print("=" * 70)
@@ -212,7 +226,10 @@ def main():
         print(f"Extra class-weight boost applied: Fear x{FEAR_WEIGHT_BOOST}, Disgust x{DISGUST_WEIGHT_BOOST}")
     class_weights = class_weights.to(DEVICE)
 
-    text_encoder = FinetuneTextEncoder(TEXT_MODEL_NAME, freeze_layers=FREEZE_LAYERS).to(DEVICE)
+    text_encoder = build_finetune_encoder(
+        TEXT_MODEL_NAME, freeze_layers=FREEZE_LAYERS, context_past=CONTEXT_PAST,
+        context_future=CONTEXT_FUTURE, max_total_length=MAX_TOTAL_LENGTH,
+    ).to(DEVICE)
     model = MultimodalFusionModel(
         text_dim=TEXT_DIM, audio_dim=AUDIO_DIM, video_dim=VIDEO_DIM, num_classes=NUM_CLASSES,
         num_speaker_slots=NUM_SPEAKER_SLOTS, num_sentiment_classes=NUM_SENTIMENT_CLASSES,
@@ -279,6 +296,9 @@ def main():
                     "finetuned": True,
                     "seed": SEED,
                     "freeze_layers": FREEZE_LAYERS,
+                    "context_past": CONTEXT_PAST,
+                    "context_future": CONTEXT_FUTURE,
+                    "max_total_length": MAX_TOTAL_LENGTH,
                     "emotion_names": EMOTION_NAMES,
                 },
                 FINETUNE_MODEL_PATH,

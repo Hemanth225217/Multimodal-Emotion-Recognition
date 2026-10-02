@@ -23,7 +23,7 @@ from config import NUM_CLASSES, EMOTION_NAMES, AUDIO_DIM, VIDEO_DIM, NUM_SPEAKER
 from training.dataset_finetune import FinetuneMELDDataset
 from training.train_finetune import FINETUNE_MODEL_PATH
 from models.fusion_model import MultimodalFusionModel
-from models.finetune_text_encoder import FinetuneTextEncoder
+from models.finetune_text_encoder import build_encoder_from_checkpoint
 
 
 def main():
@@ -34,7 +34,7 @@ def main():
     print(f"Epoch {checkpoint.get('epoch')}: val_accuracy={checkpoint.get('val_accuracy'):.4f} "
           f"val_weighted_f1={checkpoint.get('val_weighted_f1'):.4f}\n")
 
-    text_encoder = FinetuneTextEncoder(checkpoint["text_model_name"]).to(DEVICE)
+    text_encoder = build_encoder_from_checkpoint(checkpoint).to(DEVICE)
     text_encoder.load_state_dict(checkpoint["text_encoder_state_dict"])
     text_encoder.eval()
 
@@ -58,7 +58,7 @@ def main():
             labels = sample["labels"].tolist()
             speaker_slots = sample["speaker_slots"].unsqueeze(0).to(DEVICE, dtype=torch.long)
 
-            text = text_encoder(texts, DEVICE)
+            text = text_encoder(texts, DEVICE, speaker_slots=sample["speaker_slots"])
             logits = model(text, audio, video, speaker_slots=speaker_slots).reshape(-1, NUM_CLASSES)
 
             all_preds.extend(torch.argmax(logits, dim=1).cpu().tolist())
