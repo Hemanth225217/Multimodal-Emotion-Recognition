@@ -60,3 +60,4 @@ Thumbs.db
 # committed (large, and not the standing best model -- see README for why).
 models/final_model_finetuned*.pt
 models/checkpoint_*.pt
+models/ft_*.pt
