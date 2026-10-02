@@ -113,14 +113,13 @@ def load_original_text_features():
 def load_features(text_path=None, use_legacy_audio=True):
     """Load text, audio and emotion information from MELD.
 
-    Text uses frozen RoBERTa-large embeddings by default (1024-D, see
-    modules/text_features_roberta_large.py) -- matches AMB-DSGDN's actual
-    text encoder size. Tried after RoBERTa-base (768-D, still available via
-    ROBERTA_TEXT_PATH) and DistilBERT (768-D, DISTILBERT_TEXT_PATH), which
-    were used first because RoBERTa-large's ~355M parameters and ~1.4GB
-    download were judged too expensive to risk earlier in the project, when
-    the timeline was a couple of days rather than a week. Still
-    pre-extracted, not fine-tuned end-to-end.
+    Text uses frozen RoBERTa-base embeddings by default (768-D, see
+    modules/text_features_roberta.py) -- the features checkpoint B
+    (models/final_model.pt, the demo/evaluation model) was trained on, so the
+    default dataset always matches the default model. RoBERTa-large (1024-D,
+    ROBERTA_LARGE_TEXT_PATH) and DistilBERT (768-D, DISTILBERT_TEXT_PATH) are
+    reached through the text_path argument, never by changing this default.
+    Still pre-extracted, not fine-tuned end-to-end.
 
     Audio uses the original MELD paper's 300-D openSMILE-style features by
     default. A frozen Wav2Vec2-base upgrade (768-D, see
@@ -133,10 +132,10 @@ def load_features(text_path=None, use_legacy_audio=True):
     text_path overrides which text pickle to load -- used to build a
     second, DistilBERT-aligned dataset instance for ensembling with the
     older DistilBERT-trained checkpoint (see evaluation/ensemble_test.py),
-    without disturbing the default RoBERTa path every other caller relies on.
+    without disturbing the default RoBERTa-base path every other caller relies on.
     """
 
-    with open(text_path or ROBERTA_LARGE_TEXT_PATH, "rb") as file:
+    with open(text_path or ROBERTA_TEXT_PATH, "rb") as file:
         text_features = pickle.load(file)
 
     if use_legacy_audio:

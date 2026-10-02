@@ -23,7 +23,7 @@ from sklearn.metrics import (
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from config import NUM_CLASSES, EMOTION_NAMES, BASELINE_MODEL_PATH, DEVICE
+from config import NUM_CLASSES, EMOTION_NAMES, BASELINE_MODEL_PATH, DEVICE, TEXT_AUDIO_FEATURES_DIR
 from training.dataset import MELDDataset
 from models.baseline_model import BaselineModel
 
@@ -32,7 +32,10 @@ def main():
     print(f"Device: {DEVICE}")
     print(f"Model : {BASELINE_MODEL_PATH}\n")
 
-    test_dataset = MELDDataset(split="test")
+    # The baseline was trained on the original MELD paper's 600-D CNN text features,
+    # not on the RoBERTa/DistilBERT embeddings later used by the fusion models --
+    # pin them explicitly instead of relying on the global default.
+    test_dataset = MELDDataset(split="test", text_path=TEXT_AUDIO_FEATURES_DIR / "text_emotion.pkl")
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
     model = BaselineModel().to(DEVICE)

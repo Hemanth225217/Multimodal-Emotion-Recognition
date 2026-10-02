@@ -27,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from config import PROJECT_ROOT, EMOTION_NAMES, NUM_CLASSES, FINAL_MODEL_PATH, DEVICE
 from training.dataset import MELDDataset
+from modules.data_loader import ROBERTA_TEXT_PATH
 from modules.inference import load_model, predict_dialogue
 from modules.ambiguity import disagreement_level
 from modules.explanation import build_explanation
@@ -56,7 +57,19 @@ def get_model():
 def get_test_dataset():
     global _test_dataset
     if _test_dataset is None:
-        _test_dataset = MELDDataset(split="test")
+        # The demo serves final_model.pt (checkpoint B), which was trained on
+        # frozen RoBERTa-base (768-D) text features. Pin them explicitly: the
+        # global default text features were later switched to RoBERTa-large
+        # (1024-D), which made /predict crash with a shape mismatch until this
+        # was pinned.
+        _test_dataset = MELDDataset(split="test", text_path=ROBERTA_TEXT_PATH, use_legacy_audio=True)
+        get_model()
+        sample_dim = _test_dataset[0]["text"].shape[-1]
+        if sample_dim != _checkpoint_meta["text_dim"]:
+            raise RuntimeError(
+                f"Demo dataset text features are {sample_dim}-D but the served checkpoint "
+                f"expects {_checkpoint_meta['text_dim']}-D"
+            )
     return _test_dataset
 
 

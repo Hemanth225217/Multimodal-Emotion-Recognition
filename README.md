@@ -897,23 +897,56 @@ Requires MELD raw video under `meld_dataset/raw/` and features under
 ## Running things
 
 ```bash
-# One-time: extract frozen DistilBERT text embeddings (downloads ~270MB
-# model weights on first run, then a few minutes of CPU inference)
-python modules/text_features_distilbert.py
-
-# Train the final model (~10-40 min on this hardware, no GPU -- varies with
-# when early stopping triggers)
-python training/train_final.py
-
-# Evaluate
+# Evaluate the single model B (models/final_model.pt) -- reproduces
+# 62.45% accuracy / 61.50% weighted F1 / 42.74% macro F1
 python evaluation/evaluate_final.py
-python evaluation/evaluate_baseline.py
 python evaluation/modality_ablation.py
 python evaluation/disagreement_analysis.py
 
-# Run the web demo (http://127.0.0.1:8000)
+# Reproduce the ensemble table from the committed probability caches
+# (no checkpoints or GPU needed)
+python -m evaluation.ensemble_from_cache --candidates B,D_orig,F_orig,H2_base,H3_large --reference B
+
+# Run the web demo (http://127.0.0.1:8000) -- serves the single model B
 python -m uvicorn app.backend.main:app --port 8000
+
+# Retrain model B's recipe (RoBERTa-base features are the default; ~10-40 min
+# on a CPU, faster on a GPU). It writes models/final_model.pt, so back that
+# file up first if you want to keep the checkpoint the demo serves.
+python training/train_final.py
+
+# Other text encoders / seeds are selected with environment variables, never
+# by editing config.py, and should write to their own file:
+TRAIN_TEXT_DIM=1024 TRAIN_TEXT_PATH=meld_features/text_roberta_large/text_roberta_large.pkl     TRAIN_SEED=1 TRAIN_OUTPUT_PATH=models/checkpoint_f_seed1.pt python training/train_final.py
+
+# End-to-end fine-tuning (GPU recommended): layer-frozen RoBERTa-large with a
+# dialogue context window of 2 preceding lines + 1 following
+TRAIN_CONTEXT_PAST=2 TRAIN_CONTEXT_FUTURE=1 TRAIN_OUTPUT_PATH=models/ft_large_ctx21.pt     python -m training.train_finetune
+
+# One-time feature extraction, if the pickles under meld_features/ are missing
+python modules/text_features_roberta.py          # RoBERTa-base (default text features)
+python modules/text_features_distilbert.py       # DistilBERT
+python modules/text_features_roberta_large.py    # RoBERTa-large (~1.4 GB download)
 ```
+
+> **Regression found and fixed (2026-10-02).** While RoBERTa-large was being
+> explored, the *global default* text features were switched to RoBERTa-large
+> (1024-D) even though the checkpoint the demo and these evaluation scripts
+> load, `models/final_model.pt`, uses RoBERTa-base (768-D). Every default-
+> configured consumer then failed with `input.size(-1) must be equal to
+> input_size. Expected 768, got 1024` -- including the demo's `/predict`
+> endpoint. The defaults now match checkpoint B again, the demo pins its
+> features explicitly and checks the dimension at startup, and other
+> encoders are chosen through explicit environment variables.
+>
+> Verified after the fix by re-running everything the README tells people to
+> run: `evaluate_final.py` reproduces checkpoint B's 62.45% / 61.50% /
+> 42.74%; `evaluate_baseline.py` (which carried an older version of the same
+> drift -- the baseline needs the original 600-D features and now pins them)
+> reproduces the baseline's 59.12% / 55.28% / 31.27%; `modality_ablation.py`,
+> `disagreement_analysis.py` and `confusion_matrix.py` run to completion; and
+> the demo's `/health`, `/examples` and `/predict` (including a modality
+> toggle) all return 200.
 
 ## API
 
