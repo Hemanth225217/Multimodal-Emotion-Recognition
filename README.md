@@ -531,6 +531,21 @@ RoBERTa-base version), even at a similar frozen-fraction ratio. Kept as
 `models/final_model_finetuned_roberta_large.pt` (gitignored, like the other
 fine-tuned checkpoints) and `logs/evaluate_finetune_roberta_large_output.log`.
 
+**Two attempts to fix that Fear collapse both failed on validation.** With
+`TRAIN_FREEZE_LAYERS` and `TRAIN_FEAR_WEIGHT_BOOST` / `TRAIN_DISGUST_WEIGHT_BOOST`
+env overrides added to `train_finetune.py`, two single-variable variants of
+the RoBERTa-large fine-tune were trained on Kaggle's GPU: (1) a heavier
+freeze (bottom 20 of 24 layers instead of 16) and (2) Fear and Disgust
+class weights x1.5 on top of the existing 1.15x, at the original freeze
+depth. Judged on *validation* (the project's selection rule), neither beat
+the existing fine-tune: best validation weighted F1 was 0.6207 for the
+heavier freeze (macro F1 0.4601) and 0.6128 for the class-weight boost
+(macro F1 0.4268), against 0.6366 / 0.4766 for the original. Neither
+checkpoint was downloaded or scored on the test set -- a variant that loses
+on validation has no claim on the test set. So the simple knobs do not fix
+Fear here; the minority classes remain the open problem (see the ensemble
+section for the current per-class numbers).
+
 **But fine-tuning turned out to help anyway -- as an ensemble member, not
 solo.** Tested the fine-tuned checkpoint (H) alongside B+D+F in every
 combination (`evaluation/ensemble_test_with_finetune.py`, after first
@@ -575,7 +590,10 @@ change how that should be read:
   random streams on CPU and GPU and the floating-point numerics differ,
   and that is enough to send a 15+-epoch run somewhere several points
   away. **A single trained instance of this recipe therefore carries
-  several points of run-to-run noise.**
+  several points of run-to-run noise.** (A later four-seed study, below,
+  shows the seed-42 GPU run was simply the *worst* of four: the other
+  three GPU seeds score 62.7-63.9% accuracy, in line with the original
+  F, so the GPU itself is not what lowered it.)
 * **GPU retraining is deterministic for a fixed seed.** Retraining D and F
   two more times each (meant as a "multi-seed" check) gave checkpoints
   bit-identical to the first (all 105 weight tensors equal, zero
@@ -679,6 +697,53 @@ metrics**, with a point estimate slightly above on accuracy and about 1.4
 points below on weighted F1, and it is decisively better than any single
 model here. The weakest classes are unchanged: Fear (F1 0.07, recall 4%)
 and Disgust (F1 0.14) -- 50 and 68 test utterances respectively.
+
+**Seed noise, measured.** Four seeds each of the current-recipe DistilBERT
+(D) and RoBERTa-large (F) frozen-feature models were trained on Kaggle's GPU
+(`TRAIN_SEED`; `evaluation/seed_stats.py`, `logs/seed_stats_output.log`):
+
+| Family (4 seeds) | Test accuracy | Test weighted F1 | Equal-weight average of the 4 seeds |
+|---|---|---|---|
+| D, DistilBERT | 61.02 +/- 1.82 (58.39 to 62.26) | 60.03 +/- 1.36 (58.05 to 61.15) | 62.95 / 61.74 / 42.88 |
+| F, RoBERTa-large | 62.35 +/- 1.65 (60.00 to 63.87) | 61.34 +/- 0.99 (59.98 to 62.32) | 64.10 / 62.80 / 43.92 |
+
+The same recipe moves by about 2 accuracy points (one standard deviation)
+from seed to seed, with a 4-point best-to-worst range -- so any single-run
+difference smaller than that is not evidence of anything. Averaging the
+seeds recovers +1.5 to +1.9 points over a typical single seed, so for a
+frozen-feature family "train a few seeds and average" is worth it.
+Whether it helps the *full* ensemble is a separate question, and the answer
+is no: adding the seed-averaged D and F families to the member pool leaves
+the validation-chosen ensemble unchanged (D + F + H3, test 66.48% / 64.74%),
+and the twelve best subsets by validation all score 66.0-66.7% accuracy and
+64.3-64.9% weighted F1 on test (`logs/ensemble_from_cache_seedavg_pool.log`).
+The pool has plateaued around **66.5% / 64.8%**: more seeds of the same
+families cannot move it, and a member that sees something different is
+needed instead (the context-aware encoder below).
+
+**Context-aware fine-tuning (the one remaining untried lever).** Every
+fine-tuned encoder above embeds each utterance *in isolation*; all
+cross-utterance reasoning is left to the BiLSTM/attention layers on top.
+On MELD that is a real handicap -- many utterances are short and ambiguous
+by themselves ("Yeah.", "What?", "Oh.") and only the neighbouring lines say
+what the character feels. `ContextFinetuneTextEncoder`
+(`models/finetune_text_encoder.py`) puts the neighbouring utterances inside
+the transformer's input instead: for each target utterance it feeds the
+preceding lines and the next reply, each tagged with a dialogue-relative
+speaker letter (the same relative identities the fusion model already uses
+-- never character names), and mean-pools only the target's tokens.
+Zero-size windows fall back to the original encoder exactly, and old
+checkpoints load unchanged. Before any GPU time was spent it was checked
+for: the exact input format, window semantics (changing a neighbour inside
+the window changes the target's embedding by 0.097; changing an utterance
+outside it changes it by exactly 0), truncation that never clips the
+target, gradients reaching only the unfrozen layers, and real training
+steps. Runs launched on Kaggle's GPU: RoBERTa-large with 2 preceding lines
++ 1 following (same recipe otherwise as the 64.18% isolated fine-tune),
+and RoBERTa-base with 3 + 1 at two seeds plus a no-context control at the
+second seed, so a gain can be judged against seed noise rather than
+against one run. *Results are added below when they finish; until then
+nothing here claims the context window helps.*
 
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
