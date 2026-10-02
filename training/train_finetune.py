@@ -93,7 +93,11 @@ FINETUNE_MODEL_PATH = Path(OUTPUT_PATH_OVERRIDE) if OUTPUT_PATH_OVERRIDE else (
 # 62.57%/61.66%/42.02% -- see README) so this run can't clobber it.
 # TRAIN_TEXT_MODEL selects another encoder (e.g. roberta-base for the
 # faster context-window experiments).
-TEXT_HIDDEN_SIZES = {"roberta-base": 768, "roberta-large": 1024}
+TEXT_HIDDEN_SIZES = {
+    "roberta-base": 768, "roberta-large": 1024,
+    "microsoft/deberta-v3-large": 1024,   # a different pretraining recipe and tokenizer: diversity
+    "microsoft/deberta-v3-xsmall": 384,   # smoke tests only
+}
 TEXT_MODEL_NAME = os.environ.get("TRAIN_TEXT_MODEL", "roberta-large")
 if TEXT_MODEL_NAME not in TEXT_HIDDEN_SIZES:
     raise SystemExit(f"TRAIN_TEXT_MODEL must be one of {sorted(TEXT_HIDDEN_SIZES)}, got {TEXT_MODEL_NAME!r}")

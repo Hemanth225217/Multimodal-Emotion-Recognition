@@ -46,6 +46,15 @@ class FinetuneTextEncoder(nn.Module):
             for layer in self.model.encoder.layer[:freeze_layers]:
                 for param in layer.parameters():
                     param.requires_grad = False
+            # DeBERTa shares one relative-position embedding table and one
+            # LayerNorm across *all* layers; left trainable they would be
+            # updated through the top layers and silently change what the
+            # "frozen" bottom layers compute. RoBERTa has neither.
+            for shared in ("rel_embeddings", "LayerNorm"):
+                module = getattr(self.model.encoder, shared, None)
+                if module is not None:
+                    for param in module.parameters():
+                        param.requires_grad = False
             total_layers = len(self.model.encoder.layer)
             trainable = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
             total = sum(p.numel() for p in self.model.parameters())
