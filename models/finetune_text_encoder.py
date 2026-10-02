@@ -37,6 +37,13 @@ class FinetuneTextEncoder(nn.Module):
         super().__init__()
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModel.from_pretrained(model_name)
+        # Some hub checkpoints (DeBERTa-v3-large is one) are *stored* in half
+        # precision, and recent transformers loads weights in their stored dtype
+        # by default. Training a half-precision encoder with AdamW diverges to
+        # NaN on the first steps (a DeBERTa run did exactly that). Upcasting is
+        # lossless -- the stored values are fp16 -- and a no-op for the fp32
+        # RoBERTa checkpoints.
+        self.model = self.model.float()
         self.max_length = max_length
         self.hidden_size = self.model.config.hidden_size
 

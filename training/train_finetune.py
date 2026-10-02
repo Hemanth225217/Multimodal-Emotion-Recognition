@@ -180,6 +180,13 @@ def run_epoch(text_encoder, model, loader, criterion, optimizer=None, dropout_pr
                 dropout_probs.update(update_dropout_probs(dropout_probs, ema_aux_accuracy))
 
             loss = classification_loss + CAP_PENALTY_WEIGHT * cap_penalty + AUX_LOSS_WEIGHT * aux_loss
+            if not torch.isfinite(loss):
+                # A diverged run otherwise trains on for epochs, 'completes', and looks like
+                # a result (a DeBERTa run did, with NaN loss and majority-class predictions).
+                raise FloatingPointError(
+                    f"non-finite loss ({loss.item()}) -- training has diverged; aborting "
+                    f"(check encoder dtype/learning rate)"
+                )
 
             if train_mode:
                 optimizer.zero_grad(set_to_none=True)
