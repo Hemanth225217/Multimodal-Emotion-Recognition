@@ -143,29 +143,31 @@ included).
 | Ensemble: B+D+F + fine-tuned RoBERTa (B+D+F+H), best of several subsets on test | 66.36% | 64.55% | 44.96% |
 | Ensemble: B + fine-tuned RoBERTa-large (B+H3) | 64.98% | 63.76% | 43.83% |
 | Ensemble: B+D'+F' (current-recipe retrains) + H3 | 65.56% | 64.16% | 45.27% |
-| **Ensemble: B + D + F + H2 + H3, all five, equal weight, no selection** | **66.63%** | **64.83%** | 44.73% |
+| Ensemble: B + D + F + H2 + H3, all five, equal weight, no selection | 66.63% | 64.83% | 44.73% |
 | Ensemble: D + F + H3, subset chosen on validation, test looked at once | 66.48% | 64.74% | 44.59% |
+| **Ensemble: D + H2 + H3 + H3c, subset chosen on validation, test looked at once** | **66.90%** | **65.43%** | **45.17%** |
+| Ensemble: all six members (B, D, F, H2, H3, H3c), equal weight, no selection | 66.67% | 64.92% | 44.77% |
 
 **Read this table with the confidence intervals in mind.** On 2,610 test
 utterances the 95% dialogue-level bootstrap interval for any of the
 ensemble rows is about +/-2.1 points on accuracy and +/-2.3 on weighted F1
-(the validation-chosen row: accuracy [64.33%, 68.61%], weighted F1
-[62.44%, 67.07%]). AMB-DSGDN's reported 66.07% / 66.18% sits *inside* both
+(for the bolded row: accuracy [64.72%, 69.02%], weighted F1 [63.16%,
+67.68%]). AMB-DSGDN's reported 66.07% / 66.18% sits *inside* both
 intervals, so the honest summary is "statistically indistinguishable from
-AMB-DSGDN, with point estimates of +0.4 points on accuracy and -1.4 on
+AMB-DSGDN, with point estimates of +0.8 points on accuracy and -0.75 on
 weighted F1" -- not "beats it". What the data does show decisively is that
-ensembling helps: the validation-chosen ensemble beats the single model B
-by +4.0 accuracy points (95% CI +2.6 to +5.5) and +3.2 weighted-F1 points
-(CI +1.8 to +4.8). The two bolded/bottom rows are the numbers to quote: the
-five-member average involves no selection at all (every available member,
-equal weight), and the last row picks its three members on *validation*
-and looks at test once. The row marked "best of several subsets on test"
-is the project's earlier headline (66.36%): it is a real measurement, but
-it was the maximum over several ensembles scored on the very test set it
-is reported on, which biases it upward, and its H member (the full
-fine-tune of RoBERTa-base) is not retained as a file. See "Ensemble results
-under an honest selection protocol" below for how the bottom rows were
-produced.
+ensembling helps: the bolded ensemble beats the single model B by +4.5
+accuracy points (95% CI +2.9 to +6.1) and +3.9 weighted-F1 points (CI +2.4
+to +5.6). The numbers to quote are the bottom two rows: the bolded one picks
+its four members on *validation* and looks at test once, and the last row,
+the plain average of every available member, involves no selection at all.
+H3c is the context-aware RoBERTa-large fine-tune (see the context-aware
+section). The row marked "best of several subsets on test" is the project's
+earlier headline (66.36%): a real measurement, but the maximum over several
+ensembles scored on the very test set it is reported on, which biases it
+upward, and its H member (the full fine-tune of RoBERTa-base) is not
+retained as a file. See "Ensemble results under an honest selection
+protocol" below for how the bottom rows were produced.
 
 Speaker-aware modeling (the 62.45% single-model row -- checkpoint B, the model
 the demo serves) is the first change this session to move accuracy
@@ -681,6 +683,7 @@ split only):
 | F | RoBERTa-large frozen features, graph fusion off | 63.41 / 60.85 / 39.17 |
 | H2 | RoBERTa-base fine-tuned, bottom 8/12 layers frozen | 62.57 / 61.66 / 42.02 |
 | H3 | RoBERTa-large fine-tuned, bottom 16/24 layers frozen | 64.18 / 63.32 / 43.57 |
+| H3c | H3's recipe plus a dialogue context window (2 preceding + 1 following lines inside the transformer), seed 42 | 64.48 / 63.46 / 43.39 |
 
 The original D, F and B were recovered from `MELD_best_ensemble_checkpoints.zip`
 (restored under `models/originals/`; B is bit-identical to `final_model.pt`).
@@ -712,6 +715,34 @@ metrics**, with a point estimate slightly above on accuracy and about 1.4
 points below on weighted F1, and it is decisively better than any single
 model here. The weakest classes are unchanged: Fear (F1 0.07, recall 4%)
 and Disgust (F1 0.14) -- 50 and 68 test utterances respectively.
+
+**Adding the context-aware member (H3c).** On its own the context window did
+not help (validation weighted F1 0.6249 vs 0.6366; test 63.46% vs 63.32%
+weighted F1 -- the two are indistinguishable). As an ensemble member it does
+help, because it reads different information from the other members. Its
+cache was computed on Kaggle's GPU straight from the training kernel's
+output (no 1.45 GB download, no CPU re-encoding; the recomputed validation
+weighted F1 matches the 0.6249 recorded at training time to four decimals),
+and the analysis was rerun over six candidates (`logs/ensemble_from_cache_with_ctx_large.log`):
+
+| Ensemble (equal-weight average) | Selection | Validation | Test |
+|---|---|---|---|
+| D + H2 + H3 + H3c | best of 63 subsets on validation | 67.06 / 65.42 / 50.23 | **66.90 / 65.43 / 45.17** |
+| B + D + F + H2 + H3 + H3c | none (all members) | 66.52 / 64.48 / 47.55 | **66.67 / 64.92 / 44.77** |
+| B + D + H2 + H3c | best of 63 subsets *on test* (optimistic, not a valid headline) | -- | 67.20 / 65.72 / 46.86 |
+
+For the validation-chosen ensemble the 95% dialogue-bootstrap interval is
+accuracy [64.72%, 69.02%] and weighted F1 [63.16%, 67.68%]; AMB-DSGDN's
+66.07% / 66.18% is inside both. Point estimates: +0.8 points on accuracy and
+-0.75 on weighted F1 versus the paper. Against the single model B the gain
+is +4.46 accuracy points (95% CI +2.93 to +6.09) and +3.94 weighted-F1
+points (CI +2.37 to +5.58). Compared with the same analysis without H3c
+(66.48% / 64.74%) the validation-chosen ensemble gains +0.4 accuracy and
++0.7 weighted F1 -- encouraging, but each is smaller than the sampling
+error, and the pool now has 63 candidate subsets to select from, so it is
+read as "consistent with context-aware members adding diversity", not as a
+proven improvement. Every one of the twelve best subsets by validation
+contains H3c.
 
 **Why Fear and Disgust fail (`evaluation/minority_error_analysis.py`,
 `logs/minority_error_analysis_output.log`, on the validation-chosen
@@ -788,8 +819,20 @@ steps. Runs launched on Kaggle's GPU: RoBERTa-large with 2 preceding lines
 + 1 following (same recipe otherwise as the 64.18% isolated fine-tune),
 and RoBERTa-base with 3 + 1 at two seeds plus a no-context control at the
 second seed, so a gain can be judged against seed noise rather than
-against one run. *Results are added below when they finish; until then
-nothing here claims the context window helps.*
+against one run.
+
+*Result so far (RoBERTa-large, 2 preceding + 1 following line, 52 minutes on
+the GPU): no evidence that the context window helps this model on its own.*
+Its best validation weighted F1 is 0.6249 (accuracy 0.6408, macro F1 0.4459
+at epoch 7) against 0.6366 / 0.6507 / 0.4766 for the otherwise-identical
+isolated-utterance fine-tune -- about 1.2 points *lower*, though a single
+run of each is inside the seed-to-seed spread measured above, so the honest
+reading is "no gain demonstrated", not "context hurts". Whether it adds
+diversity as an ensemble member is scored in the ensemble section above
+(it does help there). The RoBERTa-base runs
+(two context seeds, a no-context seed-1 control, and a regeneration of the
+original full fine-tune) are still training, so nothing here yet says
+whether the window helps at that scale.
 
 **Base paper comparison -- AMB-DSGDN (2026, arXiv 2603.10043).** This is the
 most recent closely-related paper found (adaptive per-modality dropout based
@@ -798,31 +841,32 @@ losses) and the explicit target for this phase of work. Its reported MELD
 numbers: 66.07% accuracy / 66.18% weighted F1 (IEMOCAP: 76.09%/75.64%).
 
 **Honest verdict: statistically indistinguishable from AMB-DSGDN on both
-metrics, not a clear win.** The best result obtained *without* selecting on
-the test set is the equal-weight average of five members (B, D, F and the
-two fine-tuned encoders H2/H3): **66.63% accuracy / 64.83% weighted F1**;
-choosing the members on validation instead gives 66.48% / 64.74% (see
-"Ensemble results under an honest selection protocol"). Against AMB-DSGDN's
-66.07% / 66.18% that is about +0.4 points on accuracy and -1.4 on weighted
-F1 -- but on 2,610 test utterances the 95% bootstrap interval is roughly
-+/-2 points, and AMB-DSGDN's numbers fall inside it on both metrics. So the
-defensible claim is *comparable performance*, reached with a much lighter
-pipeline (frozen features plus a layer-frozen fine-tune, trained on free GPU
-time), not that this project surpasses the paper. The project's earlier
-66.36% headline came from picking the best of several ensembles on the test
-set and shouldn't be quoted as a clean result. What *is* established
-decisively is the size of the ensembling gain over a single model (+4.0
-accuracy points, +3.2 weighted-F1 points over B, both with confidence
-intervals clear of zero). Six single-model or pipeline changes adapted from
-AMB-DSGDN's method helped (auxiliary unimodal losses, adaptive dropout, the
-RoBERTa-base and then RoBERTa-large text upgrades, dialogue-relative
-speaker embeddings, and end-to-end fine-tuning); the speaker-relational
-attention bias (twice), sentiment loss (twice), per-batch dropout alone, a
-full graph attention fusion layer, and fitted ensemble weights all did not.
-Not every idea inspired by a stronger paper transfers cleanly, and
-reporting the failures -- including a real bug caught mid-session, several
-of this project's own earlier misreadings, and the winner's-curse bias in
-the old headline -- is as much part of the record as the successes.
+metrics, not a clear win.** The best result *with the ensemble chosen on
+validation and the test set looked at once* is **66.90% accuracy / 65.43%
+weighted F1** (D + H2 + H3 + the context-aware H3c); the plain average of all
+six available members, which involves no selection at all, gives 66.67% /
+64.92% (see "Ensemble results under an honest selection protocol").
+Against AMB-DSGDN's 66.07% / 66.18% that is about +0.8 points on accuracy and
+-0.75 on weighted F1 -- but on 2,610 test utterances the 95% bootstrap
+interval is roughly +/-2 points, and AMB-DSGDN's numbers fall inside it on
+both metrics. So the defensible claim is *comparable performance*, reached
+with a much lighter pipeline (frozen features plus layer-frozen fine-tunes
+trained on free GPU time), not that this project surpasses the paper. The
+project's earlier 66.36% headline came from picking the best of several
+ensembles on the test set and shouldn't be quoted as a clean result. What
+*is* established decisively is the size of the ensembling gain over a single
+model (+4.5 accuracy points, +3.9 weighted-F1 points over B, both with
+confidence intervals clear of zero). Six single-model or pipeline changes
+adapted from AMB-DSGDN's method helped (auxiliary unimodal losses, adaptive
+dropout, the RoBERTa-base and then RoBERTa-large text upgrades,
+dialogue-relative speaker embeddings, and end-to-end fine-tuning); the
+speaker-relational attention bias (twice), sentiment loss (twice), per-batch
+dropout alone, a full graph attention fusion layer, and fitted ensemble
+weights all did not. Not every idea inspired by a stronger paper transfers
+cleanly, and reporting the failures -- including a real bug caught
+mid-session, several of this project's own earlier misreadings, and the
+winner's-curse bias in the old headline -- is as much part of the record as
+the successes.
 
 **For broader context:** other 2024-2026 systems on this task report
 weighted F1 in the 66-74% range (MCN-CL 73.1%, AMuSE ~74%, AM2-EmoJE 71.98%,
