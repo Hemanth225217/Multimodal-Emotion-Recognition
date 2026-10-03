@@ -542,8 +542,9 @@ before the file was deleted. With it, the original 66.36% / 64.55% / 44.96%
 B+D+F+H ensemble now reproduces exactly from retained members.)
 
 **Follow-up 2: the same recipe on RoBERTa-large -- AMB-DSGDN's actual text
-encoder -- produces the best single model this project has ever trained,
-but Fear collapses again.** Everything up to this point had only fine-tuned
+encoder -- produces the best single model this project had trained at that
+point (since superseded by the DeBERTa model below), but Fear collapses
+again.** Everything up to this point had only fine-tuned
 RoBERTa-base; RoBERTa-large had only ever been used frozen (checkpoint F).
 Applied the same layer-freezing approach, scaled to RoBERTa-large's 24
 layers: froze the bottom 16 (the same ~2/3 ratio as the RoBERTa-base run),
