@@ -1,0 +1,39 @@
+Device: cpu
+Model : C:\Users\Samsung Laptop\Multimodal_Emotion_Recognition\models\final_model.pt
+
+
+======================================================================
+TEST TRI-MODAL DATASET
+======================================================================
+TEST dialogues: 280
+TEST usable utterances: 2610
+TEST feature vectors before alignment: 2610
+TEST dialogues requiring feature truncation: 0
+TEST dialogues with insufficient features: 0
+TEST missing visual utterances: 0
+TEST visual features loaded: 2610
+TEST visual feature dimension: 512
+======================================================================
+load_model: missing keys ['graph_fusion.gat.att_src', 'graph_fusion.gat.att_dst', 'graph_fusion.gat.bias', 'graph_fusion.gat.lin.weight', 'graph_fusion.norm.weight', 'graph_fusion.norm.bias', 'sentiment_classifier.weight', 'sentiment_classifier.bias'], unexpected keys []
+Speaker embedding: trained, using real slots
+
+=== FUSION BEHAVIOUR BY MODALITY DISAGREEMENT ===
+Level        Count   Share  Fusion Acc  Avg Conf
+LOW            709  27.16%      0.8054    0.7596
+MEDIUM        1366  52.34%      0.5805    0.6218
+HIGH           535  20.50%      0.4972    0.5986
+
+When modalities disagree (1901 utterances, 72.8% of the test set), the fused prediction matches whichever modality the model adaptively weighted highest 89.6% of the time.
+
+=== AVERAGE ADAPTIVE MODALITY WEIGHTS ===
+Text=0.545  Audio=0.238  Video=0.217
+
+By true emotion:
+Emotion       Text   Audio   Video   Count
+neutral      0.545   0.248   0.207    1256
+surprise     0.540   0.216   0.244     281
+fear         0.547   0.222   0.231      50
+sadness      0.548   0.225   0.227     208
+joy          0.549   0.239   0.212     402
+disgust      0.546   0.224   0.230      68
+anger        0.543   0.234   0.223     345

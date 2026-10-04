@@ -1,0 +1,47 @@
+Device: cpu
+Model : C:\Users\Samsung Laptop\Multimodal_Emotion_Recognition\models\baseline_model.pt
+
+
+======================================================================
+TEST TRI-MODAL DATASET
+======================================================================
+TEST dialogues: 280
+TEST usable utterances: 2610
+TEST feature vectors before alignment: 2610
+TEST dialogues requiring feature truncation: 0
+TEST dialogues with insufficient features: 0
+TEST missing visual utterances: 0
+TEST visual features loaded: 2610
+TEST visual feature dimension: 512
+======================================================================
+Traceback (most recent call last):
+  File "C:\Users\Samsung Laptop\Multimodal_Emotion_Recognition\evaluation\evaluate_baseline.py", line 74, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\Samsung Laptop\Multimodal_Emotion_Recognition\evaluation\evaluate_baseline.py", line 49, in main
+    logits = model(text, audio).reshape(-1, NUM_CLASSES)
+             ~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Samsung Laptop\Multimodal_Emotion_Recognition\venv\Lib\site-packages\torch\nn\modules\module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\Samsung Laptop\Multimodal_Emotion_Recognition\venv\Lib\site-packages\torch\nn\modules\module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "C:\Users\Samsung Laptop\Multimodal_Emotion_Recognition\models\baseline_model.py", line 30, in forward
+    text_out, _ = self.text_encoder(text)
+                  ~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\Samsung Laptop\Multimodal_Emotion_Recognition\venv\Lib\site-packages\torch\nn\modules\module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\Samsung Laptop\Multimodal_Emotion_Recognition\venv\Lib\site-packages\torch\nn\modules\module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "C:\Users\Samsung Laptop\Multimodal_Emotion_Recognition\venv\Lib\site-packages\torch\nn\modules\rnn.py", line 1140, in forward
+    self.check_forward_args(input, hx, batch_sizes)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Samsung Laptop\Multimodal_Emotion_Recognition\venv\Lib\site-packages\torch\nn\modules\rnn.py", line 1037, in check_forward_args
+    self.check_input(input, batch_sizes)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Samsung Laptop\Multimodal_Emotion_Recognition\venv\Lib\site-packages\torch\nn\modules\rnn.py", line 329, in check_input
+    raise RuntimeError(
+        f"input.size(-1) must be equal to input_size. Expected {self.input_size}, got {input.size(-1)}"
+    )
+RuntimeError: input.size(-1) must be equal to input_size. Expected 600, got 768

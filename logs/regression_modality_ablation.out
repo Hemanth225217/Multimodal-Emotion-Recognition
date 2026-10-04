@@ -1,0 +1,51 @@
+Device: cpu
+Model : C:\Users\Samsung Laptop\Multimodal_Emotion_Recognition\models\final_model.pt
+
+
+======================================================================
+TEST TRI-MODAL DATASET
+======================================================================
+TEST dialogues: 280
+TEST usable utterances: 2610
+TEST feature vectors before alignment: 2610
+TEST dialogues requiring feature truncation: 0
+TEST dialogues with insufficient features: 0
+TEST missing visual utterances: 0
+TEST visual features loaded: 2610
+TEST visual feature dimension: 512
+======================================================================
+load_model: missing keys ['graph_fusion.gat.att_src', 'graph_fusion.gat.att_dst', 'graph_fusion.gat.bias', 'graph_fusion.gat.lin.weight', 'graph_fusion.norm.weight', 'graph_fusion.norm.bias', 'sentiment_classifier.weight', 'sentiment_classifier.bias'], unexpected keys []
+Speaker embedding: trained, using real slots
+
+text_only            acc=0.6111  weightedF1=0.6053  macroF1=0.4192
+audio_only           acc=0.3992  weightedF1=0.3644  macroF1=0.1851
+video_only           acc=0.4812  weightedF1=0.3127  macroF1=0.0928
+text+audio           acc=0.6226  weightedF1=0.6146  macroF1=0.4282
+text+video           acc=0.6192  weightedF1=0.6106  macroF1=0.4228
+audio+video          acc=0.4203  weightedF1=0.3764  macroF1=0.1844
+text+audio+video     acc=0.6245  weightedF1=0.6150  macroF1=0.4274
+
+=== SUMMARY TABLE ===
+Configuration           Accuracy   Weighted F1    Macro F1
+text_only                 0.6111        0.6053      0.4192
+audio_only                0.3992        0.3644      0.1851
+video_only                0.4812        0.3127      0.0928
+text+audio                0.6226        0.6146      0.4282
+text+video                0.6192        0.6106      0.4228
+audio+video               0.4203        0.3764      0.1844
+text+audio+video          0.6245        0.6150      0.4274
+
+=== PER-CLASS F1 BY CONFIGURATION ===
+Emotion              text_only        audio_only        video_only        text+audio        text+video       audio+video  text+audio+video
+neutral                 0.7623            0.5805            0.6498            0.7629            0.7693            0.6075            0.7657
+surprise                0.5504            0.2690            0.0000            0.5690            0.5590            0.2504            0.5695
+fear                    0.2178            0.0000            0.0000            0.2243            0.2366            0.0000            0.2222
+sadness                 0.3065            0.0727            0.0000            0.3059            0.3110            0.0284            0.3032
+joy                     0.5738            0.0404            0.0000            0.5813            0.5781            0.0606            0.5765
+disgust                 0.0659            0.0000            0.0000            0.0494            0.0465            0.0000            0.0500
+anger                   0.4575            0.3331            0.0000            0.5046            0.4590            0.3441            0.5047
+
+=== MODALITY CONTRIBUTION (tri-modal minus the pair missing it) ===
+Video : accuracy +0.0019, macroF1 -0.0008
+Audio : accuracy +0.0054, macroF1 +0.0046
+Text  : accuracy +0.2042, macroF1 +0.2430

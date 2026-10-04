@@ -1,0 +1,15 @@
+
+======================================================================
+TEST TRI-MODAL DATASET
+======================================================================
+TEST dialogues: 280
+TEST usable utterances: 2610
+TEST feature vectors before alignment: 2610
+TEST dialogues requiring feature truncation: 0
+TEST dialogues with insufficient features: 0
+TEST missing visual utterances: 0
+TEST visual features loaded: 2610
+TEST visual feature dimension: 512
+======================================================================
+load_model: missing keys ['graph_fusion.gat.att_src', 'graph_fusion.gat.att_dst', 'graph_fusion.gat.bias', 'graph_fusion.gat.lin.weight', 'graph_fusion.norm.weight', 'graph_fusion.norm.bias', 'sentiment_classifier.weight', 'sentiment_classifier.bias'], unexpected keys []
+Saved confusion matrix to C:\Users\Samsung Laptop\Multimodal_Emotion_Recognition\evaluation\confusion_matrix_final.png
