@@ -1,0 +1,40 @@
+demo: {'status': 'ok', 'device': 'cpu', 'model': 'final_model.pt', 'checkpoint_val_accuracy': 0.5911552346570397, 'checkpoint_val_macro_f1': 0.43626997267892154}
+test utterances: 2610 in 280 dialogues
+
+scanned in 142 s
+
+fused accuracy: 1630/2610 = 62.452%
+
+=== disagreement levels (report Table 12.7) ===
+LOW     n=  709 share= 27.2%  accuracy=571/709 = 80.536%  mean confidence=76.0%
+MEDIUM  n= 1366 share= 52.3%  accuracy=793/1366 = 58.053%  mean confidence=62.2%
+HIGH    n=  535 share= 20.5%  accuracy=266/535 = 49.720%  mean confidence=59.9%
+
+=== single-modality heads ===
+text -only accuracy  61.11%  predicted classes: {'neutral': 1239, 'joy': 452, 'surprise': 344, 'anger': 337, 'sadness': 164, 'fear': 51, 'disgust': 23}
+audio-only accuracy  39.92%  predicted classes: {'neutral': 1221, 'anger': 982, 'surprise': 351, 'joy': 44, 'sadness': 12}
+video-only accuracy  48.12%  predicted classes: {'neutral': 2610}
+
+=== what LOW / MEDIUM / HIGH consist of ===
+LOW predictions by class: {'neutral': 706, 'surprise': 1, 'fear': 1, 'joy': 1}
+neutral predictions: 1275, 76.0% correct; non-neutral predictions: 1335, 49.5% correct
+  neutral predictions by level: LOW n=706 acc=80.9%; MEDIUM n=559 acc=69.6%; HIGH n=10 acc=90.0%
+  non-neutral predictions by level: LOW n=3 acc=0.0%; MEDIUM n=807 acc=50.1%; HIGH n=525 acc=49.0%
+
+=== adaptive weights over the whole test set ===
+text  mean=0.545 sd=0.016 min=0.377 max=0.587
+audio mean=0.238 sd=0.045 min=0.089 max=0.430
+video mean=0.217 sd=0.040 min=0.147 max=0.374
+modality with the largest weight: {'text': 2607, 'audio': 3}
+when the modalities disagree (1901 utterances) the fused prediction equals the text-only prediction in 89.6% of cases
+
+=== does audio ever matter? (non-neutral utterances) ===
+audio-only right on 323 of 1354; of these the fused prediction is right while text-only is wrong in 33 cases, and the fused prediction is wrong in 109 cases
+
+=== weights when a modality is missing (every 5th utterance) ===
+all present   (n=522) mean weights text/audio/video = 0.545/0.237/0.218   accuracy on this sample 66.1%
+text zeroed   (n=522) mean weights text/audio/video = 0.158/0.539/0.303   accuracy on this sample 42.3%
+audio zeroed  (n=522) mean weights text/audio/video = 0.540/0.229/0.232   accuracy on this sample 65.5%
+video zeroed  (n=522) mean weights text/audio/video = 0.532/0.241/0.227   accuracy on this sample 66.1%
+
+single /predict latency on this machine (after warm-up): median 92 ms, max 145 ms

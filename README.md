@@ -1052,9 +1052,9 @@ involves no selection at all, gives 67.28% / 65.35%. Against AMB-DSGDN's
 the headline, and +1.21 / -0.83 for the selection-free average. On 2,610 test
 utterances the 95% bootstrap interval is roughly +/-2 points, and AMB-DSGDN's
 numbers fall inside it on both metrics, so the defensible claim is
-*comparable performance, reached with a much lighter pipeline* (frozen
-features plus layer-frozen fine-tunes trained on free GPU time) -- not a
-demonstrated win. Two things guard against over-reading it. The first DeBERTa
+*comparable performance* (reached with frozen features plus layer-frozen
+fine-tunes trained on free GPU time; the paper does not report its training
+cost, so no efficiency claim is made) -- not a demonstrated win. Two things guard against over-reading it. The first DeBERTa
 seed alone produced a 68.12% / 66.62% ensemble, but a second seed showed that
 seed was partly luck (alone: 66.17% / 65.45% vs 63.87% / 62.49%), so the
 two-seed number is the one to quote and the project reports both. And the
@@ -1082,11 +1082,15 @@ the successes.
 
 **For broader context:** other 2024-2026 systems on this task report
 weighted F1 in the 66-74% range (MCN-CL 73.1%, AMuSE ~74%, AM2-EmoJE 71.98%,
-TelME 67.37%, AMB-DSGDN 66.18%) -- all fine-tune large pretrained
-transformers end-to-end on GPUs, several with graph networks or contrastive
-learning. This project's frozen-feature, ~7.1M-parameter architecture
-trained entirely on a CPU laptop is closing that gap incrementally rather
-than matching their scale outright.
+TelME 67.37%, AMB-DSGDN 66.18%). They build on large pretrained encoders,
+several with graph networks or contrastive learning; whether a given paper
+fine-tunes its encoders is not always stated (as far as we could find, the
+AMB-DSGDN paper lists RoBERTa 1024-D, DenseNet 342-D and openSMILE 300-D
+inputs and does not say whether they are fine-tuned or frozen). This
+project's final system -- a ~7.1M-parameter fusion model over frozen or
+layer-frozen fine-tuned text encoders, with the fine-tuning done on free
+Kaggle T4 time -- lands at the lower end of that range (66.30% weighted
+F1), not at the top of it.
 
 ## Dataset
 
@@ -1169,11 +1173,15 @@ python evaluation/disagreement_analysis.py
 python -m evaluation.ensemble_from_cache --candidates B,D_orig,F_orig,H2_base,H3_large --reference B
 
 # Run the web demo (http://127.0.0.1:8000) -- serves the single model B
+# (on Windows you can instead double-click start_demo.bat)
 python -m uvicorn app.backend.main:app --port 8000
 
 # Retrain model B's recipe (RoBERTa-base features are the default; ~10-40 min
 # on a CPU, faster on a GPU). It writes models/final_model.pt, so back that
 # file up first if you want to keep the checkpoint the demo serves.
+# Note: the script's adaptive dropout is the per-batch variant adopted on 27 Sep (run18: 61.65% /
+# 60.62%); model B itself was trained on 22 Sep with the per-epoch variant, so a retrain is
+# comparable to B but not identical to it.
 python training/train_final.py
 
 # Other text encoders / seeds are selected with environment variables, never
@@ -1248,30 +1256,37 @@ above rather than pasted here, so they can't go stale.
 
 ## An honest note on what the ablation numbers actually show
 
-`text_only` (60.50% acc / 59.84% weighted F1) and `text+audio` (61.26% /
-60.50%) land within about a point of the full `text+audio+video` (61.23% /
-60.43%) on these *aggregate* zero-ablation numbers. Read literally, that
-could suggest video adds little on its own. That's not the full picture:
+*(Rewritten on 2026-10-04 for the final demonstration model B. An earlier version of this note described
+content-dependent weights -- video highest for joy, audio highest for surprise -- measured on an older checkpoint;
+those figures do not describe model B. Everything below comes from `evaluation/demo_scan_analysis.py`, which scans
+the running demo over the whole test set; its output is `logs/demo_scan_analysis.out`.)*
 
-- The adaptive weight network uses audio and video meaningfully and
-  *differently* depending on content -- e.g. video is weighted highest for
-  joy (27.4%) and lowest for sadness (21.1%), a sensible pattern (visible
-  facial expression carries more signal for joy than for sadness); audio
-  peaks for surprise (28.2%). See `logs/disagreement_analysis_output.log`.
-  Text/audio/video now average 50.6%/25.2%/24.1% -- audio and video are
-  nearly equal contributors, up from a near-total text monopoly before the
-  modality-collapse fix.
-- Zero-ablation (feeding a modality all zeros) is a coarse way to measure
-  "value" -- it tests whether the network can still function *without* a
-  modality, not how much that modality helps on the specific utterances
-  where it matters. Averaged across a mostly-text-decidable dataset, a
-  modality that meaningfully helps on a minority of hard utterances can
-  still show a near-zero or slightly negative aggregate delta.
-- The missing-modality robustness itself (the app's toggle, and this
-  ablation study existing at all) is part of the project's stated
-  contribution, independent of whether it nudges the headline accuracy
-  number up or down by a fraction of a point.
+On model B (2,610 test utterances), `text_only` (61.11% acc / 60.53% weighted F1) and `text+audio` (62.26% / 61.46%)
+land within about one and a half points of the full `text+audio+video` (62.45% / 61.50%): audio adds +0.54 and video
++0.19 accuracy points on top of the other two modalities. Read literally, audio and video add little with the
+features used here (generic 300-D audio features, ResNet-18 frame features without face detection). Some caveats
+that matter when reading this further:
 
-Reporting this straight rather than only showing the number that looks best
-is more defensible in front of faculty than claiming tri-modal strictly
-dominates every single metric, which it does not.
+- **The adaptive weights are nearly constant across real utterances.** Over the 2,610 test utterances the text weight
+  averages 0.545 (SD 0.016, range 0.38 to 0.59), audio 0.238 (SD 0.045) and video 0.217 (SD 0.040); text carries the
+  largest weight for 2,607 of the 2,610 utterances, and the per-emotion averages are almost identical (text 0.540 to
+  0.549, `logs/disagreement_analysis_output.log`). The weight cap prevents the collapse onto text but does not produce
+  strongly utterance-specific weighting. The weights do react to a *missing text* input (on every fifth test utterance,
+  522 in all, zeroing text moves the mean weights from 0.545 / 0.237 / 0.218 to 0.158 / 0.539 / 0.303 for text / audio /
+  video), but zeroing audio or video barely moves them (the audio weight stays at 0.229, the video weight at 0.227).
+- **The single-modality predictions are weak and biased, which shapes the disagreement levels.** The video-only
+  prediction is "neutral" for all 2,610 utterances (its 48.12% accuracy is exactly the neutral share), and the
+  audio-only prediction is only ever neutral, anger, surprise, joy or sadness (never fear or disgust). The LOW level is
+  therefore almost entirely "all three say neutral" (706 of the 709 LOW utterances are predicted neutral), and the
+  accuracy gradient from LOW to HIGH (80.54%, 58.05%, 49.72%) largely reflects that neutral predictions (76.0% correct)
+  are more accurate than non-neutral ones (49.5%). Among non-neutral predictions the level carries no information
+  about correctness (MEDIUM 50.1%, HIGH 49.0%); among neutral predictions LOW (80.9%) is more reliable than MEDIUM
+  (69.6%). The level is best read as a transparency aid, not as a calibrated reliability score.
+- Zero-ablation (feeding a modality all zeros) is a coarse way to measure "value": it tests whether the network can
+  still function *without* a modality, not how much that modality helps on the specific utterances where it matters.
+  Audio carries some signal the fusion does not use: on the 1,354 non-neutral utterances the audio-only prediction is
+  right for 323; it corrects a wrong text-only prediction in 33 cases, but is right while the fused prediction is wrong
+  in 109 cases, because the fusion follows the text (it equals the text-only prediction in 89.6% of the disagreements).
+- The missing-modality robustness itself (the app's toggle, and this ablation study existing at all) is part of the
+  project's stated contribution, independent of whether it nudges the headline accuracy number up or down by a fraction
+  of a point.
