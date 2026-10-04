@@ -1080,17 +1080,18 @@ mid-session, several of this project's own earlier misreadings, and the
 winner's-curse bias in the old headline -- is as much part of the record as
 the successes.
 
-**For broader context:** other 2024-2026 systems on this task report
-weighted F1 in the 66-74% range (MCN-CL 73.1%, AMuSE ~74%, AM2-EmoJE 71.98%,
-TelME 67.37%, AMB-DSGDN 66.18%). They build on large pretrained encoders,
-several with graph networks or contrastive learning; whether a given paper
-fine-tunes its encoders is not always stated (as far as we could find, the
-AMB-DSGDN paper lists RoBERTa 1024-D, DenseNet 342-D and openSMILE 300-D
-inputs and does not say whether they are fine-tuned or frozen). This
-project's final system -- a ~7.1M-parameter fusion model over frozen or
-layer-frozen fine-tuned text encoders, with the fine-tuning done on free
-Kaggle T4 time -- lands at the lower end of that range (66.30% weighted
-F1), not at the top of it.
+**For broader context (each number checked against the paper on 2026-10-05):** other 2024-2026 systems report
+MELD weighted F1 from about 66 to 73%, as stated by their authors: MCN-CL 73.1% (RoBERTa-base, openSMILE,
+ResNet-101), AM2-EmoJE 71.98% (SBERT, PASST audio, face-and-body video), AMuSE 71.32% (MPNet, PASST audio, speaker
+and dialogue contexts), an xLSTM-based fusion 69.78% (as stated in its abstract), MiSTER-E 69.5% +/- 0.3 (speech and
+text, three initialisations), Sync-TVA 67.40%, TelME 67.37%, GraphSmile 66.71% and AMB-DSGDN 66.18%. The settings
+differ (modalities, encoders, use of speaker information, number of runs, and how the reported run was chosen, which
+several of the papers do not say), so these are not like-for-like comparisons. This project's final system -- a
+~7.1M-parameter fusion model over frozen or layer-frozen fine-tuned text encoders, with the fine-tuning done on free
+Kaggle T4 time -- scores 66.30% weighted F1 with the ensemble chosen on validation and the test set scored once. That
+is the middle of the range: level with GraphSmile and AMB-DSGDN, below the systems above 67%. Where the higher-scoring
+systems differ most visibly is the audio and video side (for example PASST audio features and face-and-body video),
+which is also this project's weakest part (the video-only head predicts neutral for every test utterance).
 
 ## Dataset
 
