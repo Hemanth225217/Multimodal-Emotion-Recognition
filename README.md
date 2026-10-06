@@ -928,13 +928,11 @@ Reproduce from the committed caches:
 python -m evaluation.ensemble_from_cache --candidates B,D_orig,F_orig,H2fam,H3_large,H3c,CTXb,H17,DBc --group H2fam=H2_base,H2b_s1 --group H3c=CTX_large_s42,CTX_large_s1 --group CTXb=CTXb_s42,CTXb_s1 --group H17=H_run17_regen --group DBc=DEB_ctx_s42,DEB_ctx_s1 --reference B
 ```
 
-*Environment note.* Partway through the final day Windows Smart App Control
-(in enforcing mode) began blocking `torch_global_deps.dll`, an unsigned
-PyTorch library, so PyTorch-dependent scripts (the demo, the evaluations and
-this analysis) cannot start on that laptop until the policy is changed or the
-work is run elsewhere; NumPy / scikit-learn scripts are unaffected. The cache
-files, scripts and committed results do not depend on it, and the analysis
-above was run on Kaggle instead.
+*Environment note.* On 3 October Windows Smart App Control (in enforcing mode) began blocking
+`torch_global_deps.dll`, an unsigned PyTorch library, so PyTorch-dependent scripts could not start on the development
+laptop that evening and the analysis above was run on Kaggle instead. By the evening of 4 October the block was gone:
+PyTorch imports again, and the demo and the evaluation scripts run locally. The cache files, scripts and committed
+results never depended on it.
 
 **Why Fear and Disgust fail (`evaluation/minority_error_analysis.py`,
 `logs/minority_error_analysis_output.log`, on the validation-chosen
