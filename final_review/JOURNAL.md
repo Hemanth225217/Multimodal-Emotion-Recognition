@@ -35,3 +35,11 @@
 - **`MASTER_PLAN.md` written** (planning only): tiers A to D of targets with rough odds, 15 levers with estimated gains and costs,
   five candidate contributions with a prior-art protocol, phases with gates, safeguards, logistics, risks, the two-person split.
   A Word copy is in `Downloads\Final_Review_Master_Plan.docx`.
+
+## 2026-10-07 (afternoon)
+
+- The user gave the deadline: **15 October** (8 days from today, a Wednesday). `MASTER_PLAN.md` section 0 is the 8-day schedule:
+  experiments freeze Monday 12 October evening, test scored once on the 13th, documents finished on the 14th, the 15th is a buffer.
+  Final selection rule fixed before any new run: greedy forward selection on validation (stop when the gain is below 0.1).
+- Test-split audio kernel restarted with the title fixed to match its id (`hemanths0411/meld-audio-test`); this time Kaggle gave no
+  title warning.

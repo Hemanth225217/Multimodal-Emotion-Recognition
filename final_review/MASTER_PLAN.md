@@ -1,6 +1,30 @@
 # Final-review master plan
 
-Written 2026-10-07. **Planning only: nothing in this plan is being run yet.** The pre-final package stays frozen (git tag `pre-final-review`). This plan replaces the short table in `PLAN.md`; the ground rules there still apply.
+Written 2026-10-07. The deadline was given the same day (15 October), so section 0 turns the plan into an 8-day schedule. The pre-final package stays frozen (git tag `pre-final-review`). This plan replaces the short table in `PLAN.md`; the ground rules there still apply.
+
+## 0. The schedule to the deadline (Thursday 15 October)
+
+Today is Wednesday 7 October, so there are 8 days. The three-week plan below is cut to fit. Experiments freeze on the evening of Monday 12 October, the test set is scored once on Tuesday 13, the documents are finished on Wednesday 14, and the 15th is a buffer. (Kaggle's weekly GPU quota is 30 hours; I believe it resets on Saturdays, so the long language-model job is scheduled for Saturday. Check your remaining hours on Kaggle.)
+
+| Day | Cloud experiments (free T4) | Local analysis and writing | Decision |
+|---|---|---|---|
+| Wed 7 (today) | Test-split audio features re-extracted with the fix (restarted). Training kernel and audio support written. | Schedule and plan updated. | none |
+| Thu 8 | **L1:** fusion model with WavLM audio, 3 seeds each for the control, WavLM layers 22/14/21 and WavLM layer 22 (about 2 h). **L5:** frozen sentence or LLM embeddings extracted (1 to 2 h). | **N1** masking matrix, **L15** headroom, selective prediction (CPU). Prior-art searches start. | none |
+| Fri 9 | Probabilities cached for the members worth keeping. Extra seeds (**L6**) for the DeBERTa and RoBERTa-large context families. | First report chapter drafted from the numbers so far. | **Gate 1:** keep audio if validation weighted F1 rises by at least 0.5. Keep embeddings if they beat the control by 1.0 or add at least 0.3 to the validation pool. |
+| Sat 10 | **L8:** LoRA fine-tune of a 7B language model (Qwen2.5-7B-Instruct), about 6 h. | Prior-art table finished. Deck outline. | none |
+| Sun 11 | Language-model evaluation and cached probabilities. More seeds if quota allows. | Report chapters, viva sheet questions. | **Gate 3 (night):** keep the language-model member only if it raises the validation pool. |
+| Mon 12 | Only runs that finish by noon. | Writing. **Freeze:** candidate list and commit hash committed by the evening. | **Freeze** |
+| Tue 13 | none | **Final scoring:** greedy forward selection on validation, test scored once, paired bootstrap, comparison table, README. | Results are final |
+| Wed 14 | none | Final report, deck, viva sheet, demo check, zip. Both of you rehearse. | Submission-ready |
+| Thu 15 | none | Buffer, or the review itself. | none |
+
+**Kept:** L1, L5, L6, L8 (with a hard cutoff), L15, N1, selective prediction, and the audit-and-repair story (L1 is the repair). **Cut unless time appears:** L2, L3, L4, L7, L9 to L14, the extra-data track.
+
+**Final selection rule (fixed now, before any new run).** The earlier search over every subset of members chooses among too many options for a validation set of 1,108 utterances. For the final pool use greedy forward selection on validation: start from the best single member, repeatedly add the member that raises validation weighted F1 the most, and stop when the gain is below 0.1 points. The unselected average of all members is reported beside the headline.
+
+**Two people, 8 days.** Pranitha: the prior-art checks and comparison table, review and write-up of the N1 and selective-prediction results, the report and slide chapters, and the rehearsal. Hemanth: the runs and the keep-or-drop decisions (with me), the ensemble and the final scoring. Both: a 10-minute check-in every day and a cross-explanation of each other's part before the 14th.
+
+**Risks specific to 8 days.** A failed run costs a day, so every kernel gets a small smoke test first. The language-model job is the long pole, so it has a hard cutoff on the 12th. If Gate 1 is negative, the story becomes the audit, N1 and the selective-prediction results, which are cheap and do not depend on the GPU.
 
 ## 1. The goal, stated honestly
 
