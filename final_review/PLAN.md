@@ -2,6 +2,8 @@
 
 Started 2026-10-05. This is separate from the pre-final (guide) review.
 
+**The full plan, with every lever, the tiers of targets, the gates and the two-person split, is in `MASTER_PLAN.md` (written 2026-10-07, planning only).**
+
 ## Ground rules
 
 1. **The pre-final package is frozen.** Git tag `pre-final-review` (commit `c49da59`) marks the code, README, logs and

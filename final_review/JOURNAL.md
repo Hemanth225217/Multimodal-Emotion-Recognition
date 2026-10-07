@@ -25,3 +25,13 @@
   clips and the kernel kept the first one found; for test that copy often could not be decoded. Train (9,988) and validation
   (1,108) match the local pipeline, so the probe results are unaffected. Fix: `kaggle/audio_extract_test/audio_extract.py`
   keeps every candidate path, tries the canonical folder first, falls back to the other copies, and logs why failures failed.
+
+- **Kernel `meld-audio-test-features` ended with status ERROR and an empty log** (no failure message through the API). The script
+  passes a syntax check and imports locally, so the likely cause is the title/id mismatch Kaggle warned about (the title slug
+  is `meld-audio-test-features`, the metadata id was `meld-audio-test`). Not re-run: on 2026-10-07 you asked for planning only.
+  Fix on restart: title it "MELD Audio Test" so the slug equals the id.
+- Repository facts for the contribution statement: as of 2026-10-07, 67 commits, all authored by Hemanth S, 66 with a
+  "Co-Authored-By: Claude" trailer. Pranitha N.S does not appear in the history (see `MASTER_PLAN.md` section 9).
+- **`MASTER_PLAN.md` written** (planning only): tiers A to D of targets with rough odds, 15 levers with estimated gains and costs,
+  five candidate contributions with a prior-art protocol, phases with gates, safeguards, logistics, risks, the two-person split.
+  A Word copy is in `Downloads\Final_Review_Master_Plan.docx`.
