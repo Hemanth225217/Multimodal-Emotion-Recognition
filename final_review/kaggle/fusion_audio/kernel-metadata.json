@@ -1,0 +1,24 @@
+{
+  "id": "hemanths0411/meld-fusion-audio",
+  "title": "MELD Fusion Audio",
+  "code_file": "fusion_audio.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "keywords": [
+    "gpu"
+  ],
+  "dataset_sources": [
+    "hemanths0411/meld-emotion-features"
+  ],
+  "kernel_sources": [
+    "hemanths0411/meld-audio-test",
+    "hemanths0411/meld-audio-probe"
+  ],
+  "competition_sources": [],
+  "model_sources": [],
+  "machine_shape": "NvidiaTeslaT4"
+}

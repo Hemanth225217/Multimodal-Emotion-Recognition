@@ -61,3 +61,18 @@
   `training/train_finetune.py` and `evaluation/cache_member_probs.py`, plus the new `final_review/tools/make_audio_pickle.py`.
   Compile-checked only, never run on real features. First step when work resumes: a CPU smoke test with a synthetic audio
   pickle in the legacy layout, then commit and push, then write the fusion kernel.
+- **Evening, work resumed (new Claude session after a handoff).** Plumbing reviewed and committed (`e4495fa`, not yet pushed).
+  Check added: `data_emotion.p` and the three MELD CSVs hold identical utterance sets for every dialogue (1,038 / 114 / 280),
+  so the builder's CSV-ranked rows match the datasets' position-based alignment.
+- **CPU smoke test passed.** Fake kernel-shaped outputs (3 layers x 1024-D, rows shuffled, one clip missing per split, plus a
+  5-row decoy test file in the "probe" folder) went through the real `make_audio_pickle.py`: decoy ignored, all 13,705 rows in
+  the right place, missing clips became zero rows. `train_final.py` with `TRAIN_AUDIO_DIM=1024 TRAIN_EPOCHS=1` trained one
+  epoch in 1.1 min (Audio=1024D, val 1,108 utterances; the number itself is meaningless on random audio) and
+  `cache_member_probs --audio-path` wrote val (1108, 7) and test (2610, 7). Smoke files deleted. A harmless stderr line
+  "DLL load failed while importing _devicearray" (Windows Application Control on an optional numba module) appears at start.
+- **Fusion kernel written:** `final_review/kaggle/fusion_audio/` (`hemanths0411/meld-fusion-audio`). Clones `final-review`,
+  finds inputs by marker file (decode_report.json = test audio, probe_results.json = train/dev audio), refuses to run if
+  the built test split has any missing clip, trains control / wavlm_mean / wavlm_l22 at seeds 42, 1, 2, caches val+test
+  probabilities without printing test metrics, writes validation-only `summary.json`. `MODE = "smoke"` first (1 variant,
+  1 seed, 1 epoch), then `"full"`. It needs the branch pushed before it can run.
+- Laptop disk: C: had 2.7 GB free at the start of the evening and was falling (under 1 GB) from something outside this work.
