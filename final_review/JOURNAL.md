@@ -145,3 +145,13 @@
   other-speaker past words: -1.03 [-3.07, 1.01] (not distinguishable from 0). Reading so far: the model uses its
   neighbours' words, not their voice or face. The same-speaker result must be replicated (seeds, other models, a model
   trained with context-modality dropout) before any claim.
+- **C3 replication on 6 more MELD models** (`meld-c3-l1`, CPU, validation; L1 control and WavLM-l22, seeds 42/1/2).
+  Change in accuracy when hiding (mean of 3 seeds; per seed in brackets):
+  all-context WORDS: control +0.76 (-0.5 / +1.9 / +0.9), WavLM-l22 -2.42 (-2.5 / -4.1 / -0.6); model B was -5.08.
+  all-context VOICE: control -0.64, l22 -0.36; all-context FACE: control +0.03, l22 +0.18 (model B 0.00 / +0.09).
+  same-speaker past, all modalities: control -0.26, l22 -1.05 (model B +2.48).
+  **Reading:** (1) robust across all 7 models: the context's voice and face are not used; (2) NOT robust: how much a
+  model relies on its neighbours' words varies strongly between training runs of the same recipe (-5 to +2 points);
+  (3) model B's "hiding same-speaker past helps" does not replicate (single-model artefact; claim dropped).
+  Consequence: single-model context analyses (attention or ablation) can mislead; multi-seed intervals are needed.
+  Results: `final_review/results/C3_L1/`.
