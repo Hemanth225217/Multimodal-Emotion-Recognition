@@ -26,7 +26,7 @@ from pathlib import Path
 
 import numpy as np
 
-MODE = "smoke"  # "smoke" or "full"
+MODE = "full"  # "smoke" or "full"
 
 REPO_URL = "https://github.com/Hemanth225217/Multimodal-Emotion-Recognition.git"
 BRANCH = "final-review"

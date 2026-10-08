@@ -2,6 +2,8 @@
 
 Written 2026-10-07. The deadline was given the same day (15 October), so section 0 turns the plan into an 8-day schedule. The pre-final package stays frozen (git tag `pre-final-review`). This plan replaces the short table in `PLAN.md`; the ground rules there still apply.
 
+> **Update 8 Oct (evening):** a research paper is also planned (deadline 21 October), built from the same experiments; its plan is kept locally, outside git. Second dataset: MC-EIU (English). The user dropped the LoRA language-model member (L8) to make GPU room.
+
 ## 0. The schedule to the deadline (Thursday 15 October)
 
 Today is Wednesday 7 October, so there are 8 days. The three-week plan below is cut to fit. Experiments freeze on the evening of Monday 12 October, the test set is scored once on Tuesday 13, the documents are finished on Wednesday 14, and the 15th is a buffer. (Kaggle's weekly GPU quota is 30 hours; I believe it resets on Saturdays, so the long language-model job is scheduled for Saturday. Check your remaining hours on Kaggle.)

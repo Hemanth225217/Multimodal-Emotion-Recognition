@@ -76,3 +76,32 @@
   probabilities without printing test metrics, writes validation-only `summary.json`. `MODE = "smoke"` first (1 variant,
   1 seed, 1 epoch), then `"full"`. It needs the branch pushed before it can run.
 - Laptop disk: C: had 2.7 GB free at the start of the evening and was falling (under 1 GB) from something outside this work.
+- **Kaggle smoke run of `meld-fusion-audio` (version 1, MODE smoke) COMPLETE in 2.0 min.** Cloned commit 6648519; CUDA on;
+  inputs found by marker (test audio = meld-audio-test, train/dev = meld-audio-probe); built WavLM-large (22/14/21) pickle has
+  zero missing rows train/dev/test = 1/1/0, as required; Audio=1024D; one epoch took 0.4 min; val and test probabilities
+  cached (1108, 7) / (2610, 7). The one-epoch validation number is a pipeline check only and is not a result.
+  Estimated full run: 9 trainings of at most 25 epochs (~10 min each with early stopping) plus caching, about 1.5 to 2 GPU hours.
+  Kernel switched to MODE = "full".
+- **CPU analyses (while L1 runs on Kaggle): `final_review/analysis/headroom_selective.py`**, results in
+  `final_review/results/analysis/`. The script first reproduces the pre-final headline on test (67.89 / 66.30 / 46.00).
+  - **Headroom (L15), validation only, 9 families:** at least one family right on 86.3 % of utterances, all right on 33.8 %,
+    none on 13.7 %; average of all 67.6 % vs best single 66.4 %. Fear: any family right on only 45 % (18 of 40), average-of-all
+    recall 7.5 %; disgust 40.9 % / 13.6 %. So the oracle gap is large overall, but for fear and disgust even the oracle
+    is weak: no combination rule can fix them; they need better inputs or training.
+  - **Selective prediction, headline ensemble:** test accuracy rises from 67.9 % (answer all) to 75.1 % at 80 % coverage and
+    85.2 % at 50 % (top-probability ranking); AURC 0.160 [0.141, 0.181] against 0.321 for a random ranking and 0.058 for
+    the oracle. Validation behaves the same (69.5 -> 75.3 -> 83.6). Member agreement ranks utterances as well as the top
+    probability, no better: AURC difference +0.0005 [-0.0016, +0.0024] on test. When all 5 families agree (1,395 test
+    utterances) accuracy is 82.9 %; at 2 of 5, 33.5 %. Unlike model B's three-level disagreement indicator, ensemble
+    agreement is informative.
+- **Paper track added** (deadline 21 Oct); the plan is kept locally, outside git. Second dataset chosen: MC-EIU English
+  (Hugging Face `YulangZhuo/MC-EIU`, CC BY-NC 4.0, gated with automatic approval, raw video in three archives of
+  22.4 / 25.5 / 12.5 GB; dyadic scenes from Friends, The Big Bang Theory, Modern Family; same 7 emotions). IEMOCAP is the
+  backup if its licence arrives in time. **The user dropped the LoRA language-model member (L8).**
+- **Re-audit tool:** `final_review/analysis/modality_audit.py` (validation by default). Model B on validation reproduces its
+  checkpoint's recorded val score exactly (59.12 / 58.27 / 43.63) and shows the same pattern as the pre-final test audit:
+  text weight 0.545 (SD 0.017), largest on 100 % of utterances, mean text weight differs by only 0.015 across emotions;
+  video-only predicts neutral for every utterance; audio-only predicts 5 classes (39.9 %); ablation: text only 58.84,
+  text+audio 59.03, all 59.12; audio right while fused wrong on 63 of 639 non-neutral utterances; when text-only and
+  audio-only disagree the fused prediction follows text 84.4 % of the time. Kaggle kernel `final_review/kaggle/audit_l1`
+  (CPU only) will run the same audit on the 9 L1 checkpoints.
