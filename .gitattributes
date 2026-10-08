@@ -1,0 +1,18 @@
+# Never convert line endings inside binary files (core.autocrlf on Windows)
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pptx binary
+*.docx binary
+*.xlsx binary
+*.zip binary
+*.db binary
+*.sqlite binary
+*.pkl binary
+*.joblib binary
+*.pt binary
+*.pth binary
+*.npy binary
