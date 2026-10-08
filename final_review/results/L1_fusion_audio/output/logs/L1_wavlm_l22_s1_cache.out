@@ -1,0 +1,27 @@
+
+======================================================================
+VAL TRI-MODAL DATASET
+======================================================================
+VAL dialogues: 114
+VAL usable utterances: 1108
+VAL feature vectors before alignment: 1109
+VAL dialogues requiring feature truncation: 0
+VAL dialogues with insufficient features: 0
+VAL missing visual utterances: 1
+VAL visual features loaded: 1108
+VAL visual feature dimension: 512
+======================================================================
+
+======================================================================
+TEST TRI-MODAL DATASET
+======================================================================
+TEST dialogues: 280
+TEST usable utterances: 2610
+TEST feature vectors before alignment: 2610
+TEST dialogues requiring feature truncation: 0
+TEST dialogues with insufficient features: 0
+TEST missing visual utterances: 0
+TEST visual features loaded: 2610
+TEST visual feature dimension: 512
+======================================================================
+Saved /kaggle/temp/repo/logs/prob_cache/L1_wavlm_l22_s1.pt: val (1108, 7), test (2610, 7)

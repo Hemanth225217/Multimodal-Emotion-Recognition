@@ -1,0 +1,135 @@
+{
+ "mode": "full",
+ "repo_commit": "664851978da0e491e605abdb156c1ab02b7d7ebe",
+ "decode_report": {
+  "test": {
+   "rows_in_csv": 2610,
+   "usable": 2610,
+   "no_video": 0,
+   "failed": 0,
+   "copy_used": {
+    "1": 2056,
+    "0": 554
+   },
+   "error_kinds": {},
+   "failed_examples": [],
+   "no_video_examples": []
+  }
+ },
+ "runs": [
+  {
+   "name": "L1_control_s42",
+   "variant": "control",
+   "seed": 42,
+   "best_epoch": 7,
+   "val_accuracy": 0.5875451263537906,
+   "val_weighted_f1": 0.580895338539118,
+   "val_macro_f1": 0.43795120992641695,
+   "audio_dim": 300,
+   "status": "ok",
+   "minutes": 6.6
+  },
+  {
+   "name": "L1_wavlm_mean_s42",
+   "variant": "wavlm_mean",
+   "seed": 42,
+   "best_epoch": 9,
+   "val_accuracy": 0.5740072202166066,
+   "val_weighted_f1": 0.5653059599167543,
+   "val_macro_f1": 0.4220344393583691,
+   "audio_dim": 1024,
+   "status": "ok",
+   "minutes": 7.5
+  },
+  {
+   "name": "L1_wavlm_l22_s42",
+   "variant": "wavlm_l22",
+   "seed": 42,
+   "best_epoch": 9,
+   "val_accuracy": 0.5929602888086642,
+   "val_weighted_f1": 0.5755853906275673,
+   "val_macro_f1": 0.43011586310168864,
+   "audio_dim": 1024,
+   "status": "ok",
+   "minutes": 7.5
+  },
+  {
+   "name": "L1_control_s1",
+   "variant": "control",
+   "seed": 1,
+   "best_epoch": 11,
+   "val_accuracy": 0.5767148014440433,
+   "val_weighted_f1": 0.5740813255809715,
+   "val_macro_f1": 0.43326517214504107,
+   "audio_dim": 300,
+   "status": "ok",
+   "minutes": 8.2
+  },
+  {
+   "name": "L1_wavlm_mean_s1",
+   "variant": "wavlm_mean",
+   "seed": 1,
+   "best_epoch": 14,
+   "val_accuracy": 0.5812274368231047,
+   "val_weighted_f1": 0.5692346080745463,
+   "val_macro_f1": 0.42067896443635044,
+   "audio_dim": 1024,
+   "status": "ok",
+   "minutes": 9.6
+  },
+  {
+   "name": "L1_wavlm_l22_s1",
+   "variant": "wavlm_l22",
+   "seed": 1,
+   "best_epoch": 14,
+   "val_accuracy": 0.5938628158844765,
+   "val_weighted_f1": 0.5775608118554445,
+   "val_macro_f1": 0.42963643202542245,
+   "audio_dim": 1024,
+   "status": "ok",
+   "minutes": 9.6
+  },
+  {
+   "name": "L1_control_s2",
+   "variant": "control",
+   "seed": 2,
+   "best_epoch": 8,
+   "val_accuracy": 0.5884476534296029,
+   "val_weighted_f1": 0.5815936758393864,
+   "val_macro_f1": 0.4202317767562829,
+   "audio_dim": 300,
+   "status": "ok",
+   "minutes": 6.8
+  },
+  {
+   "name": "L1_wavlm_mean_s2",
+   "variant": "wavlm_mean",
+   "seed": 2,
+   "best_epoch": 9,
+   "val_accuracy": 0.5830324909747292,
+   "val_weighted_f1": 0.5658493902052121,
+   "val_macro_f1": 0.43069735953019517,
+   "audio_dim": 1024,
+   "status": "ok",
+   "minutes": 7.5
+  },
+  {
+   "name": "L1_wavlm_l22_s2",
+   "variant": "wavlm_l22",
+   "seed": 2,
+   "best_epoch": 10,
+   "val_accuracy": 0.5821299638989169,
+   "val_weighted_f1": 0.5704958601881079,
+   "val_macro_f1": 0.42484364903709604,
+   "audio_dim": 1024,
+   "status": "ok",
+   "minutes": 7.8
+  }
+ ],
+ "val_weighted_f1_mean": {
+  "control": 0.578856779986492,
+  "wavlm_mean": 0.566796652732171,
+  "wavlm_l22": 0.5745473542237066
+ },
+ "total_minutes": 72.1
+}

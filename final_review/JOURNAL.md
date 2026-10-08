@@ -105,3 +105,13 @@
   text+audio 59.03, all 59.12; audio right while fused wrong on 63 of 639 non-neutral utterances; when text-only and
   audio-only disagree the fused prediction follows text 84.4 % of the time. Kaggle kernel `final_review/kaggle/audit_l1`
   (CPU only) will run the same audit on the 9 L1 checkpoints.
+- **L1 full run COMPLETE** (`meld-fusion-audio` version 2, commit 6648519, 72 min on the T4). Validation only (test
+  probabilities cached, not scored). Best-epoch validation, mean of seeds 42 / 1 / 2:
+  control (300-D audio) acc 58.42, wF1 57.89 (SD 0.42), mF1 43.05;
+  WavLM-large layer 22: acc 58.97, wF1 57.45 (SD 0.36), mF1 42.82 (wF1 -0.43 vs control);
+  WavLM-large mean of 22/14/21: acc 57.94, wF1 56.68 (SD 0.21), mF1 42.45 (wF1 -1.21 vs control).
+  Per run: control 58.09 / 57.41 / 58.16; l22 57.56 / 57.76 / 57.05; mean 56.53 / 56.92 / 56.58.
+  **Gate 1 (fused val wF1 >= +0.5 over control): FAILED for both WavLM variants.** Better audio features, which raise
+  audio-only probe wF1 by about 10 points, do not raise the fused model's validation score. Reported as a negative
+  result. The CPU audit kernel `meld-audit-l1` was launched to see whether the fusion uses the new audio at all.
+  Results and caches: `final_review/results/L1_fusion_audio/`.
