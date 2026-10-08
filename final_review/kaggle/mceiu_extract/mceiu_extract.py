@@ -244,8 +244,8 @@ def extract_zip_members(path, names, dest):
 
 
 def work_dir(need_gb):
-    best = max(["/kaggle/temp", "/tmp", "/kaggle/working"],
-               key=lambda d: shutil.disk_usage(d if os.path.exists(d) else "/").free)
+    candidates = [d for d in ("/kaggle/temp", "/tmp", "/kaggle/working") if os.path.isdir(d)]
+    best = max(candidates, key=lambda d: shutil.disk_usage(d).free)
     free = shutil.disk_usage(best).free / 1e9
     log(f"work dir {best}: {free:.1f} GB free (need about {need_gb:.0f} GB)")
     return Path(best), free
@@ -262,8 +262,8 @@ def main():
     from huggingface_hub import hf_hub_download, hf_hub_url, get_hf_file_metadata
     from remotezip import RemoteZip
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    log("device", device, "| disk:", {d: round(shutil.disk_usage(d).free / 1e9, 1) for d in ("/kaggle/working", "/tmp")
-                                       if os.path.exists(d)})
+    log("device", device, "| disk GB free:", {d: round(shutil.disk_usage(d).free / 1e9, 1)
+                                              for d in ("/kaggle/working", "/tmp", "/kaggle/temp", "/") if os.path.isdir(d)})
     report = {"seed": SEED, "split_sizes": SPLIT_SIZES}
 
     # table and split
