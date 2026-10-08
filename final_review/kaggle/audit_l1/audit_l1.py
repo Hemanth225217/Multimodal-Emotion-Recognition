@@ -19,6 +19,7 @@ def main():
         shutil.rmtree(REPO)
     subprocess.run(f"git clone --depth 1 --branch final-review "
                    f"https://github.com/Hemanth225217/Multimodal-Emotion-Recognition.git {REPO}", shell=True, check=True)
+    subprocess.run("pip install -q torch_geometric", shell=True, check=True)
     import fusion_audio as fa  # reuse input discovery, file placement and the checked pickle builder
     fa.REPO_DIR = REPO
     test_dir, probe_dir = fa.find_dir("decode_report.json"), fa.find_dir("probe_results.json")

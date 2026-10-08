@@ -32,16 +32,32 @@ def main():
 
     csv = hf_hub_download(REPO, "EnglishDialogues.csv", repo_type="dataset", token=tok, local_dir=str(OUT))
     df = pd.read_csv(csv)
-    report = {"csv_rows": len(df), "columns": list(df.columns), "head": df.head(5).astype(str).to_dict("records")}
+    report = {"csv_rows": len(df), "columns": list(df.columns), "dtypes": {c: str(t) for c, t in df.dtypes.items()},
+              "head": df.head(5).astype(str).to_dict("records")}
     for col in df.columns:
         if df[col].dtype == object and df[col].nunique() <= 40:
             report[f"values_{col}"] = df[col].value_counts().to_dict()
     for col in ("video_name", "Dia_No"):
         if col in df.columns:
             report[f"nunique_{col}"] = int(df[col].nunique())
-    if {"Begin_timestamp", "End_timestamp"} <= set(df.columns):
-        dur = df["End_timestamp"] - df["Begin_timestamp"]
-        report["utterance_seconds"] = {"mean": float(dur.mean()), "max": float(dur.max()), "total_hours": float(dur.sum() / 3600)}
+    for col in ("Begin_timestamp", "End_timestamp"):
+        if col in df.columns:
+            report[f"sample_{col}"] = df[col].astype(str).head(8).tolist()
+    try:
+        if {"Begin_timestamp", "End_timestamp"} <= set(df.columns):
+            def secs(x):
+                x = str(x).strip().replace(",", ".")
+                try:
+                    return float(x)
+                except ValueError:
+                    parts = [float(p) for p in x.split(":")]
+                    return sum(v * 60 ** i for i, v in enumerate(reversed(parts)))
+            dur = df["End_timestamp"].map(secs) - df["Begin_timestamp"].map(secs)
+            report["utterance_seconds"] = {"mean": float(dur.mean()), "max": float(dur.max()), "min": float(dur.min()),
+                                           "total_hours": float(dur.sum() / 3600)}
+    except Exception as exc:
+        report["utterance_seconds_error"] = f"{type(exc).__name__}: {exc}"[:300]
+    (OUT / "inspect_report.json").write_text(json.dumps(report, indent=1, ensure_ascii=False, default=str))
 
     headers = {"Authorization": f"Bearer {tok}"}
     for i, name in enumerate(["English_Dialogues_1.zip", "English_Dialogues_2.zip"], 1):
@@ -59,8 +75,8 @@ def main():
                             "largest_mb": round(max(x.file_size for x in infos) / 1e6, 1)}
         except Exception as exc:
             report[name] = {"error": f"{type(exc).__name__}: {exc}"[:500]}
-    (OUT / "inspect_report.json").write_text(json.dumps(report, indent=1, ensure_ascii=False))
-    print(json.dumps(report, indent=1, ensure_ascii=False)[:6000])
+    (OUT / "inspect_report.json").write_text(json.dumps(report, indent=1, ensure_ascii=False, default=str))
+    print(json.dumps(report, indent=1, ensure_ascii=False, default=str)[:6000])
 
 
 if __name__ == "__main__":

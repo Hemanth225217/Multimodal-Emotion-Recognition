@@ -115,3 +115,20 @@
   audio-only probe wF1 by about 10 points, do not raise the fused model's validation score. Reported as a negative
   result. The CPU audit kernel `meld-audit-l1` was launched to see whether the fusion uses the new audio at all.
   Results and caches: `final_review/results/L1_fusion_audio/`.
+- **L1 audit (validation, `meld-audit-l1` version 2, CPU), mean of 3 seeds** - control / WavLM l22 / WavLM mean:
+  mean audio weight 0.212 / 0.108 / 0.146 (model B 0.238); text largest weight 99.3 / 97.9 / 97.6 %; accuracy added by
+  audio (all minus text+video) +1.59 / +0.90 / +0.66 points; fused follows text when text-only and audio-only disagree
+  84.6 / 93.9 / 94.2 %; audio-only right while fused wrong (non-neutral) 42 / 19.7 / 36. Audio-only accuracy inside the
+  fused model barely moves (43.8 / 43.0 / 44.5). **Finding: with much stronger audio features the fusion gives audio less
+  weight and follows text more.** The input repair does not reach the fusion; the bottleneck is the fusion's weighting,
+  not the audio encoder. Results: `final_review/results/L1_audit/`.
+- **MC-EIU English inspected** (`mc-eiu-inspect` version 6, run by the user from the editor so the HF_TOKEN secret is
+  available; secrets are not passed to CLI-pushed runs): 45,009 utterances, 4,013 dialogues (Dia_No global), speakers 0/1,
+  columns Sr_No, Subtitle, Script, Dia_No, Utt_No, video_name, Season, Episode, Begin/End_timestamp ("hh:mm:ss,ms"),
+  emotion, intent, speaker. Shows: Modern Family 24,911, Friends 10,149, Big Bang Theory 9,949 utterances. Emotions:
+  neutral 21,429, happy 12,622, anger 4,476, sad 2,650, surprise 1,732, fear 1,256, disgust 844. Clips are per utterance
+  (`dia_<D>_utt_<U>.mp4`): zip 1 12,000 clips (22.4 GB), zip 2 18,000 (25.6 GB), rar about 15,000 (12.5 GB). **No split
+  column, and the official split is not public** (authors' code uses 10-fold CV files that are not released; GitHub
+  issue MC-EIU/MC-EIU#4, "No test partition", open and unanswered since Aug 2026). Decision (user): our own seeded,
+  dialogue-level split with the paper's sizes 2,807 / 400 / 806 dialogues, released with the code; numbers are not
+  comparable to the published 40-42 weighted F1.

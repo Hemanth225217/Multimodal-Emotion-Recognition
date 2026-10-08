@@ -1,0 +1,211 @@
+{
+ "csv_rows": 45009,
+ "columns": [
+  "Sr_No",
+  "Subtitle",
+  "Script",
+  "Dia_No",
+  "Utt_No",
+  "video_name",
+  "Season",
+  "Episode",
+  "Begin_timestamp",
+  "End_timestamp",
+  "emotion",
+  "intent",
+  "speaker"
+ ],
+ "dtypes": {
+  "Sr_No": "int64",
+  "Subtitle": "object",
+  "Script": "object",
+  "Dia_No": "int64",
+  "Utt_No": "int64",
+  "video_name": "object",
+  "Season": "int64",
+  "Episode": "int64",
+  "Begin_timestamp": "object",
+  "End_timestamp": "object",
+  "emotion": "object",
+  "intent": "object",
+  "speaker": "int64"
+ },
+ "head": [
+  {
+   "Sr_No": "1",
+   "Subtitle": "Hi! There she is! Hi, Emma. Oh, my God, I missed you. Oh, Emma, I missed you so much. Hi. Did you have a good time with Grandma Green? Huh? Did she give you a bottle of antidepressants again to use as a rattle? ",
+   "Script": "Ross:  Hi... There she is. Hi Emma. Oh my God, I missed you.  Oh Emma, I missed you so much. Hey... Did you have a good time with grandma Green? Huh? Did she give you a bottle of anti-depressants again to use as a rattle?  \n",
+   "Dia_No": "1",
+   "Utt_No": "0",
+   "video_name": "老友记",
+   "Season": "10",
+   "Episode": "1",
+   "Begin_timestamp": "00:21:52,640",
+   "End_timestamp": "00:22:08,990",
+   "emotion": "happy",
+   "intent": "questioning",
+   "speaker": "0"
+  },
+  {
+   "Sr_No": "2",
+   "Subtitle": "That was one time, Ross, and they were only, like, five milligrams. ",
+   "Script": "Rachel: That was one time, Ross, and they were only like 5 milligrams. \n",
+   "Dia_No": "1",
+   "Utt_No": "1",
+   "video_name": "老友记",
+   "Season": "10",
+   "Episode": "1",
+   "Begin_timestamp": "00:22:10,280",
+   "End_timestamp": "00:22:13,870",
+   "emotion": "neutral",
+   "intent": "neutral",
+   "speaker": "1"
+  },
+  {
+   "Sr_No": "3",
+   "Subtitle": "Ooh, hey, Emma, Daddy has some presents for you, okay? I want you to wait right here. ",
+   "Script": "Ross: Ooh hey, Emma, daddy has some presents for you okay? Okay? I want you to wait right here. Come here sweetie. \n",
+   "Dia_No": "1",
+   "Utt_No": "2",
+   "video_name": "老友记",
+   "Season": "10",
+   "Episode": "1",
+   "Begin_timestamp": "00:22:15,200",
+   "End_timestamp": "00:22:20,370",
+   "emotion": "neutral",
+   "intent": "wishing",
+   "speaker": "0"
+  },
+  {
+   "Sr_No": "4",
+   "Subtitle": "Ross, um, actually, there's something that, uh... ...I really need to talk to you about. ",
+   "Script": "Rachel: Aaah... Ross, actually there's something that I really need to talk to you about. \n",
+   "Dia_No": "1",
+   "Utt_No": "3",
+   "video_name": "老友记",
+   "Season": "10",
+   "Episode": "1",
+   "Begin_timestamp": "00:22:23,420",
+   "End_timestamp": "00:22:27,760",
+   "emotion": "anger",
+   "intent": "neutral",
+   "speaker": "1"
+  },
+  {
+   "Sr_No": "5",
+   "Subtitle": "Okay, shoot. ",
+   "Script": "Ross:  Okay, shoot! \n",
+   "Dia_No": "1",
+   "Utt_No": "4",
+   "video_name": "老友记",
+   "Season": "10",
+   "Episode": "1",
+   "Begin_timestamp": "00:22:27,970",
+   "End_timestamp": "00:22:29,590",
+   "emotion": "neutral",
+   "intent": "agreeing",
+   "speaker": "0"
+  }
+ ],
+ "values_video_name": {
+  "摩登家庭": 24911,
+  "老友记": 10149,
+  "生活大爆炸": 9949
+ },
+ "values_emotion": {
+  "neutral": 21429,
+  "happy": 12622,
+  "anger": 4476,
+  "sad": 2650,
+  "surprise": 1732,
+  "fear": 1256,
+  "disgust": 844
+ },
+ "values_intent": {
+  "neutral": 17768,
+  "questioning": 10131,
+  "suggesting": 4748,
+  "consoling": 4009,
+  "agreeing": 2998,
+  "wishing": 2714,
+  "encouraging": 1792,
+  "acknowledging": 584,
+  "sympathizing": 265
+ },
+ "nunique_video_name": 3,
+ "nunique_Dia_No": 4013,
+ "sample_Begin_timestamp": [
+  "00:21:52,640",
+  "00:22:10,280",
+  "00:22:15,200",
+  "00:22:23,420",
+  "00:22:27,970",
+  "00:22:29,760",
+  "00:22:32,850",
+  "00:22:50,030"
+ ],
+ "sample_End_timestamp": [
+  "00:22:08,990",
+  "00:22:13,870",
+  "00:22:20,370",
+  "00:22:27,760",
+  "00:22:29,590",
+  "00:22:32,680",
+  "00:22:35,600",
+  "00:22:52,160"
+ ],
+ "utterance_seconds": {
+  "mean": 3.239632229109734,
+  "max": 43.544,
+  "min": 0.15000000000009095,
+  "total_hours": 40.50350194444445
+ },
+ "English_Dialogues_1.zip": {
+  "members": 12000,
+  "by_extension": {
+   ".mp4": 12000
+  },
+  "first": [
+   "dia_1322_utt_8.mp4",
+   "dia_1_utt_0.mp4",
+   "dia_1_utt_1.mp4",
+   "dia_1_utt_2.mp4",
+   "dia_1_utt_3.mp4",
+   "dia_1_utt_4.mp4",
+   "dia_1_utt_5.mp4",
+   "dia_1_utt_6.mp4",
+   "dia_1_utt_7.mp4",
+   "dia_1_utt_8.mp4",
+   "dia_1_utt_9.mp4",
+   "dia_1_utt_10.mp4",
+   "dia_1_utt_11.mp4",
+   "dia_1_utt_12.mp4",
+   "dia_2_utt_0.mp4"
+  ],
+  "largest_mb": 17.4
+ },
+ "English_Dialogues_2.zip": {
+  "members": 18000,
+  "by_extension": {
+   ".mp4": 18000
+  },
+  "first": [
+   "dia_3064_utt_29.mp4",
+   "dia_1323_utt_0.mp4",
+   "dia_1323_utt_1.mp4",
+   "dia_1323_utt_2.mp4",
+   "dia_1323_utt_3.mp4",
+   "dia_1323_utt_4.mp4",
+   "dia_1323_utt_5.mp4",
+   "dia_1323_utt_6.mp4",
+   "dia_1325_utt_0.mp4",
+   "dia_1325_utt_1.mp4",
+   "dia_1325_utt_2.mp4",
+   "dia_1325_utt_3.mp4",
+   "dia_1325_utt_4.mp4",
+   "dia_1325_utt_5.mp4",
+   "dia_1325_utt_6.mp4"
+  ],
+  "largest_mb": 38.1
+ }
+}
