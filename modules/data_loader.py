@@ -110,7 +110,7 @@ def load_original_text_features():
     return load_pickle("text_emotion.pkl")
 
 
-def load_features(text_path=None, use_legacy_audio=True):
+def load_features(text_path=None, use_legacy_audio=True, audio_path=None):
     """Load text, audio and emotion information from MELD.
 
     Text uses frozen RoBERTa-base embeddings by default (768-D, see
@@ -138,7 +138,13 @@ def load_features(text_path=None, use_legacy_audio=True):
     with open(text_path or ROBERTA_TEXT_PATH, "rb") as file:
         text_features = pickle.load(file)
 
-    if use_legacy_audio:
+    if audio_path is not None:
+        # Final-review audio features (see final_review/tools/make_audio_pickle.py): a [train, dev, test] pickle of
+        # dialogue_id -> float32 [n_utterances, D] in the LEGACY layout (one row per utterance, zeros for an
+        # undecodable clip), so the datasets' position-based alignment works unchanged.
+        with open(audio_path, "rb") as file:
+            audio_features = pickle.load(file)
+    elif use_legacy_audio:
         audio_features = load_pickle("audio_emotion.pkl")
     else:
         with open(WAV2VEC2_AUDIO_PATH, "rb") as file:

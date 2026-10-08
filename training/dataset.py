@@ -71,7 +71,7 @@ class MELDDataset(Dataset):
         perfectly aligned.
     """
 
-    def __init__(self, split="train", text_path=None, use_legacy_audio=True):
+    def __init__(self, split="train", text_path=None, use_legacy_audio=True, audio_path=None):
 
         super().__init__()
 
@@ -88,7 +88,7 @@ class MELDDataset(Dataset):
         # identical either way.
         # ====================================================
 
-        text_data, audio_data, emotion_data = load_features(text_path, use_legacy_audio)
+        text_data, audio_data, emotion_data = load_features(text_path, use_legacy_audio, audio_path)
 
         # ====================================================
         # SPLIT MAPPING

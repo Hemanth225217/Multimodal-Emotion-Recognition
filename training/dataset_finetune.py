@@ -40,7 +40,7 @@ class FinetuneMELDDataset(Dataset):
     else in this project.
     """
 
-    def __init__(self, split="train"):
+    def __init__(self, split="train", audio_path=None):
         super().__init__()
 
         split_index = {"train": 0, "val": 1, "test": 2}
@@ -57,7 +57,11 @@ class FinetuneMELDDataset(Dataset):
             visual_data = pickle.load(f)
         self.visual_features = visual_data["features"]
 
-        audio_data = load_pickle("audio_emotion.pkl")
+        if audio_path is not None:  # final-review audio features, legacy layout (see modules/data_loader.py)
+            with open(audio_path, "rb") as f:
+                audio_data = pickle.load(f)
+        else:
+            audio_data = load_pickle("audio_emotion.pkl")
         emotion_data = load_pickle("data_emotion.p")
         self.audio_data = audio_data[self.split_index]
 

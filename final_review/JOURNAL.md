@@ -43,3 +43,21 @@
   Final selection rule fixed before any new run: greedy forward selection on validation (stop when the gain is below 0.1).
 - Test-split audio kernel restarted with the title fixed to match its id (`hemanths0411/meld-audio-test`); this time Kaggle gave no
   title warning.
+
+## 2026-10-08
+
+- **Test-split audio kernel finished** (`hemanths0411/meld-audio-test`, T4). All 2,610 test clips decoded, 0 failed, 0 without
+  video (2,056 clips taken from the second copy found, 554 from the first). WavLM-large and HuBERT-large features of shape
+  (2610, 25, 1024) are saved with `index_test.json`, `labels_test.json` and `decode_report.json`. Together with the train and dev
+  features in the `meld-audio-probe` output this completes the input for the L1 fusion run. The test files inside
+  `meld-audio-probe` stay unusable (1,595 of 2,610 clips): when building pickles, give `make_audio_pickle.py` the
+  `meld-audio-test` output folder first. The earlier kernel `meld-audio-test-features` (status ERROR) is superseded.
+- **No experiment was run today.** Work was paused at the user's request (planning and a project handoff only). The L1 run
+  (3 seeds each of: control with the old 300-D audio, WavLM-large layers 22/14/21, WavLM-large layer 22) therefore slips from
+  Thursday 8 to Friday 9, and `MASTER_PLAN.md` section 0 needs re-baselining: Friday L1 and L5 with Gate 1 in the evening,
+  Saturday the language-model run, Sunday Gate 3, freeze Monday 12 evening, final scoring Tuesday 13 (unchanged).
+- **Uncommitted in this worktree:** the `audio_path` / `TRAIN_AUDIO_PATH` / `TRAIN_AUDIO_DIM` / `TRAIN_EPOCHS` plumbing in
+  `modules/data_loader.py`, `training/dataset.py`, `training/dataset_finetune.py`, `training/train_final.py`,
+  `training/train_finetune.py` and `evaluation/cache_member_probs.py`, plus the new `final_review/tools/make_audio_pickle.py`.
+  Compile-checked only, never run on real features. First step when work resumes: a CPU smoke test with a synthetic audio
+  pickle in the legacy layout, then commit and push, then write the fusion kernel.

@@ -64,6 +64,9 @@ from training.train_final import (
 # Disgust are up-weighted) without another edit-commit-push cycle per
 # variant. Unset, every one of these reproduces prior behavior exactly.
 import os
+# Final-review audio features (legacy-layout pickle, see modules/data_loader.py); unset = the original 300-D features.
+AUDIO_DIM = int(os.environ.get("TRAIN_AUDIO_DIM", AUDIO_DIM))
+AUDIO_PATH = os.environ.get("TRAIN_AUDIO_PATH")
 FREEZE_LAYERS_OVERRIDE = os.environ.get("TRAIN_FREEZE_LAYERS")
 OUTPUT_PATH_OVERRIDE = os.environ.get("TRAIN_OUTPUT_PATH")
 FEAR_WEIGHT_BOOST = float(os.environ.get("TRAIN_FEAR_WEIGHT_BOOST", "1.0"))
@@ -225,8 +228,8 @@ def main():
     print(f"Text encoder LR: {TEXT_ENCODER_LR}   Rest-of-model LR: {MODEL_LR}")
     print("=" * 70)
 
-    train_dataset = FinetuneMELDDataset(split="train")
-    val_dataset = FinetuneMELDDataset(split="val")
+    train_dataset = FinetuneMELDDataset(split="train", audio_path=AUDIO_PATH)
+    val_dataset = FinetuneMELDDataset(split="val", audio_path=AUDIO_PATH)
     train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, collate_fn=lambda x: x[0])
     val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False, collate_fn=lambda x: x[0])
 

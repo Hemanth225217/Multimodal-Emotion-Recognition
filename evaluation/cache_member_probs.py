@@ -39,10 +39,10 @@ FEATURE_PATHS = {
 
 
 @torch.no_grad()
-def frozen_probs(checkpoint_path, features, split):
+def frozen_probs(checkpoint_path, features, split, audio_path=None):
     model, meta = load_model(Path(checkpoint_path))
     use_speaker = "num_speaker_slots" in meta
-    dataset = MELDDataset(split=split, text_path=FEATURE_PATHS[features], use_legacy_audio=True)
+    dataset = MELDDataset(split=split, text_path=FEATURE_PATHS[features], use_legacy_audio=True, audio_path=audio_path)
     labels, probs, sizes = [], [], []
     for i in range(len(dataset)):
         sample = dataset[i]
@@ -58,10 +58,10 @@ def frozen_probs(checkpoint_path, features, split):
 
 
 @torch.no_grad()
-def finetune_probs(checkpoint_path, split, encoder, model):
+def finetune_probs(checkpoint_path, split, encoder, model, audio_path=None):
     from training.dataset_finetune import FinetuneMELDDataset
 
-    dataset = FinetuneMELDDataset(split=split)
+    dataset = FinetuneMELDDataset(split=split, audio_path=audio_path)
     labels, probs, sizes = [], [], []
     for i in range(len(dataset)):
         sample = dataset[i]
@@ -82,6 +82,7 @@ def main():
     parser.add_argument("kind", choices=["frozen", "finetune"])
     parser.add_argument("checkpoint")
     parser.add_argument("--features", choices=list(FEATURE_PATHS), default=None)
+    parser.add_argument("--audio-path", default=None, help="legacy-layout audio pickle used when the member was trained (final-review features)")
     args = parser.parse_args()
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -92,8 +93,9 @@ def main():
         if not args.features:
             raise SystemExit("--features is required for frozen members (768 is ambiguous: roberta vs distilbert)")
         result["meta"]["features"] = args.features
+        result["meta"]["audio_path"] = args.audio_path
         for split in ("val", "test"):
-            probs, labels, sizes, extra = frozen_probs(args.checkpoint, args.features, split)
+            probs, labels, sizes, extra = frozen_probs(args.checkpoint, args.features, split, args.audio_path)
             result[split], result[f"{split}_labels"], result[f"{split}_sizes"] = probs, labels, sizes
             result["meta"].update(extra)
     else:
@@ -117,7 +119,7 @@ def main():
             "context_past": ckpt.get("context_past", 0), "context_future": ckpt.get("context_future", 0),
         })
         for split in ("val", "test"):
-            probs, labels, sizes = finetune_probs(args.checkpoint, split, encoder, model)
+            probs, labels, sizes = finetune_probs(args.checkpoint, split, encoder, model, args.audio_path)
             result[split], result[f"{split}_labels"], result[f"{split}_sizes"] = probs, labels, sizes
 
     torch.save(result, out_path)
