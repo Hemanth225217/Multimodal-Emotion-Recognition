@@ -117,6 +117,9 @@ FINAL_MODEL_PATH = Path(os.environ.get("TRAIN_OUTPUT_PATH", str(_CONFIG_FINAL_MO
 SEED = int(os.environ.get("TRAIN_SEED", _CONFIG_SEED))
 
 EPOCHS = int(os.environ.get("TRAIN_EPOCHS", "25"))
+# Final-review "context dropout" (C3): each modality of each utterance is zeroed independently with this probability
+# during training, so hiding a neighbour's words / voice / face at analysis time is in-distribution. 0 = off.
+CTX_DROPOUT = float(os.environ.get("TRAIN_CTX_DROPOUT", "0"))
 LEARNING_RATE = 3e-4
 WEIGHT_DECAY = 1e-4
 FOCAL_GAMMA = 1.0
@@ -268,6 +271,17 @@ def apply_modality_dropout(text, audio, video, probs):
     return text, audio, video
 
 
+def apply_context_dropout(text, audio, video, p):
+    """Zero each (utterance, modality) input vector independently with probability p (see CTX_DROPOUT)."""
+    if p <= 0:
+        return text, audio, video
+    out = []
+    for x in (text, audio, video):
+        keep = (torch.rand(x.shape[:-1], device=x.device) >= p).unsqueeze(-1).to(x.dtype)
+        out.append(x * keep)
+    return tuple(out)
+
+
 def update_dropout_probs(current_probs, epoch_aux_accuracy):
     """Recompute per-modality dropout probabilities from this epoch's
     auxiliary-head accuracy (AMB-DSGDN's idea, adapted to epoch
@@ -321,6 +335,7 @@ def run_epoch(model, loader, criterion, optimizer=None, dropout_probs=None, ema_
 
             if train_mode:
                 text, audio, video = apply_modality_dropout(text, audio, video, dropout_probs)
+                text, audio, video = apply_context_dropout(text, audio, video, CTX_DROPOUT)
 
             logits, modality_weights, aux_logits, sentiment_logits = model(
                 text, audio, video, speaker_slots=speaker_slots, return_aux=True
@@ -420,6 +435,7 @@ def main():
     print(f"Modality-weight cap: penalty {CAP_PENALTY_WEIGHT}x for any weight above {MAX_MODALITY_WEIGHT:.0%}")
     print(f"Auxiliary unimodal loss weight: {AUX_LOSS_WEIGHT}")
     print(f"Sentiment auxiliary loss weight: {SENTIMENT_LOSS_WEIGHT}")
+    print(f"Context dropout (per utterance and modality): {CTX_DROPOUT}")
     print(f"Graph attention fusion: {'enabled' if USE_GRAPH_FUSION else 'DISABLED for this run'} (cross-modal + temporal + same-speaker edges, see models/graph_fusion.py)")
     print("=" * 70)
 
@@ -524,6 +540,7 @@ def main():
                         "weight_decay": WEIGHT_DECAY,
                         "focal_gamma": FOCAL_GAMMA,
                         "seed": SEED,
+                        "ctx_dropout": CTX_DROPOUT,
                         "strategy": (
                             "single-stage adaptive fusion, moderate class weighting, gentle focal loss, "
                             "adaptive modality dropout, modality-weight cap penalty, auxiliary unimodal losses, "
