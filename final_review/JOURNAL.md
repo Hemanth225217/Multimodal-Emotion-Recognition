@@ -132,3 +132,16 @@
   issue MC-EIU/MC-EIU#4, "No test partition", open and unanswered since Aug 2026). Decision (user): our own seeded,
   dialogue-level split with the paper's sizes 2,807 / 400 / 806 dialogues, released with the code; numbers are not
   comparable to the published 40-42 weighted F1.
+- **MC-EIU extraction launched** by the user from the editor (`mc-eiu-extract` version 2, GPU T4 x2, HF_TOKEN attached).
+  Kernel: self-test on 64 clips first, then the three archives, then text; MELD-identical features. Video path verified
+  locally beforehand (reproduces stored MELD ResNet-18 vectors exactly on 3 clips); split logic verified (exact sizes,
+  show proportions kept). Audio decoding could not be tested on the laptop (Windows Application Control blocks ffmpeg,
+  exit code 0xC0E90002; not touched); the kernel's self-test covers it.
+- **Context attribution (C3), first run: model B, validation, `analysis/context_attribution.py`** (paired dialogue
+  bootstrap, 2,000 resamples; single model, masking is out-of-distribution for it):
+  hiding the words of all context utterances: accuracy -5.08 [-8.16, -2.06], wF1 -5.69, 32 % of predictions flip;
+  hiding the voice or the face of all context: no measurable effect (accuracy 0.00 [-0.99, 0.98] and +0.09 [-0.45, 0.62],
+  flips 3.5 % / 1.3 %); same-speaker past, all modalities: accuracy +2.48 [0.60, 4.44] (hiding it HELPS this model);
+  other-speaker past words: -1.03 [-3.07, 1.01] (not distinguishable from 0). Reading so far: the model uses its
+  neighbours' words, not their voice or face. The same-speaker result must be replicated (seeds, other models, a model
+  trained with context-modality dropout) before any claim.
