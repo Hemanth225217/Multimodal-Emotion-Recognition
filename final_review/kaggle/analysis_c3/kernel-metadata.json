@@ -1,0 +1,21 @@
+{
+  "id": "hemanths0411/meld-mceiu-analysis",
+  "title": "MELD MCEIU Analysis",
+  "code_file": "analysis_c3.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "keywords": [],
+  "dataset_sources": [
+    "hemanths0411/meld-emotion-features"
+  ],
+  "kernel_sources": [
+    "hemanths0411/meld-mceiu-train",
+    "hemanths0411/mc-eiu-extract"
+  ],
+  "competition_sources": [],
+  "model_sources": []
+}
