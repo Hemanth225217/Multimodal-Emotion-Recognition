@@ -1,6 +1,6 @@
 {
-  "id": "hemanths0411/meld-mceiu-train",
-  "title": "MELD MCEIU Train",
+  "id": "hemanths0411/mceiu-train",
+  "title": "MCEIU Train",
   "code_file": "train_c3.py",
   "language": "python",
   "kernel_type": "script",
@@ -8,15 +8,9 @@
   "enable_gpu": true,
   "enable_tpu": false,
   "enable_internet": true,
-  "keywords": [
-    "gpu"
-  ],
-  "dataset_sources": [
-    "hemanths0411/meld-emotion-features"
-  ],
-  "kernel_sources": [
-    "hemanths0411/mc-eiu-merge"
-  ],
+  "keywords": ["gpu"],
+  "dataset_sources": ["hemanths0411/meld-emotion-features"],
+  "kernel_sources": ["hemanths0411/mc-eiu-merge"],
   "competition_sources": [],
   "model_sources": [],
   "machine_shape": "NvidiaTeslaT4"

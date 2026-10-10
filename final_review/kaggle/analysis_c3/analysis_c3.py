@@ -57,7 +57,7 @@ def main():
     print(r.stdout[-1500:], r.stderr[-1500:], flush=True)
 
     ckpts = sorted(p for p in INPUT_ROOT.rglob("*.pt") if p.parent.name == "checkpoints"
-                   and p.stem.startswith(("meld_ctx_", "mceiu_base_", "mceiu_ctx_")))
+                   and p.stem.startswith(("meld_ctx_", "meld_crct_", "mceiu_base_", "mceiu_ctx_", "mceiu_crct_")))
     print("checkpoints:", [c.name for c in ckpts], flush=True)
     for sub in ("audit", "c3"):
         (OUT / sub).mkdir(parents=True, exist_ok=True)

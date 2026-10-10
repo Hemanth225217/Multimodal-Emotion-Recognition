@@ -13,7 +13,8 @@
     "hemanths0411/meld-emotion-features"
   ],
   "kernel_sources": [
-    "hemanths0411/meld-mceiu-train",
+    "hemanths0411/meld-train-ctx-crct",
+    "hemanths0411/mceiu-train",
     "hemanths0411/mc-eiu-merge"
   ],
   "competition_sources": [],

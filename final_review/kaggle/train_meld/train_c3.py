@@ -2,6 +2,8 @@
 
 Jobs, each at seeds 42, 1, 2, model-B recipe (train_final.py), RoBERTa-base text:
   meld_ctx      MELD, original 300-D audio, context dropout 0.15   (its no-dropout control = L1_control_s*, already run)
+  meld_crct     MELD, original 300-D audio, channel-restricted context training (CRCT) 0.25
+  mceiu_crct    MC-EIU English, WavLM-large layer 22 audio, CRCT 0.25
   mceiu_base    MC-EIU English, WavLM-large layer 22 audio, no context dropout
   mceiu_ctx     MC-EIU English, WavLM-large layer 22 audio, context dropout 0.15
 Audio for MC-EIU: WavLM layer 22, fixed in advance (MC-EIU has no openSMILE features; on MELD layer 22 was within seed
@@ -25,7 +27,13 @@ INPUT_ROOT = Path("/kaggle/input")
 OUT = Path("/kaggle/working/output")
 SEEDS = [42, 1, 2]
 CTX = "0.15"
-JOBS = [("meld_ctx", "meld", CTX), ("mceiu_base", "mceiu", "0"), ("mceiu_ctx", "mceiu", CTX)]
+CRCT = "0.25"
+# (job name, dataset, context dropout, CRCT probability). DATASETS selects which half this kernel runs: the MELD half
+# can start while MC-EIU is still being extracted; the MC-EIU half needs the mc-eiu-merge output.
+ALL_JOBS = [("meld_ctx", "meld", CTX, "0"), ("meld_crct", "meld", "0", CRCT),
+            ("mceiu_base", "mceiu", "0", "0"), ("mceiu_ctx", "mceiu", CTX, "0"), ("mceiu_crct", "mceiu", "0", CRCT)]
+DATASETS = ["meld"]
+JOBS = [j for j in ALL_JOBS if j[1] in DATASETS]
 MELD_FILES = {
     "audio_emotion.pkl": "meld_features/MELD.Features.Models/features/audio_emotion.pkl",
     "data_emotion.p": "meld_features/MELD.Features.Models/features/data_emotion.p",
@@ -82,27 +90,33 @@ def main():
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(sorted(meld_dir.rglob(name))[0], target)
     # MC-EIU in MELD layout
-    extract_dir = find_one("utterances.csv").parent
-    report = json.loads((extract_dir / "report.json").read_text()) if (extract_dir / "report.json").exists() else {}
-    print("mc-eiu-extract coverage:", report.get("coverage"), flush=True)
     mceiu_audio = Path("/kaggle/temp/mceiu_audio_l22.pkl")
-    run(f"python -u final_review/tools/mceiu_to_meld_layout.py {extract_dir} . {mceiu_audio} --layers 22", cwd=repos["mceiu"])
+    report = {}
+    if "mceiu" not in DATASETS:
+        extract_dir = None
+    else:
+        extract_dir = find_one("utterances.csv").parent
+        report = json.loads((extract_dir / "report.json").read_text()) if (extract_dir / "report.json").exists() else {}
+        print("mc-eiu coverage:", report.get("coverage"), flush=True)
+        run(f"python -u final_review/tools/mceiu_to_meld_layout.py {extract_dir} . {mceiu_audio} --layers 22",
+            cwd=repos["mceiu"])
 
     for sub in ("prob_cache", "checkpoints", "logs"):
         (OUT / sub).mkdir(parents=True, exist_ok=True)
     summary = {"repo_commit": commit, "mceiu_coverage": report.get("coverage"), "runs": []}
     for seed in SEEDS:
-        for job, data, ctx in JOBS:
+        for job, data, ctx, crct in JOBS:
             name = f"{job}_s{seed}"
             repo = repos[data]
             ckpt = repo / "models" / f"ft_{name}.pt"
             env = {"TRAIN_TEXT_PATH": "meld_features/text_roberta/text_roberta.pkl", "TRAIN_TEXT_DIM": "768",
-                   "TRAIN_SEED": str(seed), "TRAIN_OUTPUT_PATH": str(ckpt), "TRAIN_CTX_DROPOUT": ctx}
+                   "TRAIN_SEED": str(seed), "TRAIN_OUTPUT_PATH": str(ckpt), "TRAIN_CTX_DROPOUT": ctx,
+                   "TRAIN_CRCT": crct}
             cache = f"python -u -m evaluation.cache_member_probs {name} frozen {ckpt} --features roberta"
             if data == "mceiu":
                 env.update({"TRAIN_AUDIO_PATH": str(mceiu_audio), "TRAIN_AUDIO_DIM": "1024"})
                 cache += f" --audio-path {mceiu_audio}"
-            entry = {"name": name, "job": job, "data": data, "seed": seed, "ctx_dropout": float(ctx)}
+            entry = {"name": name, "job": job, "data": data, "seed": seed, "ctx_dropout": float(ctx), "crct": float(crct)}
             start = time.time()
             try:
                 run("python -u training/train_final.py", cwd=repo, env=env, log=OUT / "logs" / f"{name}.out")

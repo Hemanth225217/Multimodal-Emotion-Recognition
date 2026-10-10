@@ -120,6 +120,12 @@ EPOCHS = int(os.environ.get("TRAIN_EPOCHS", "25"))
 # Final-review "context dropout" (C3): each modality of each utterance is zeroed independently with this probability
 # during training, so hiding a neighbour's words / voice / face at analysis time is in-distribution. 0 = off.
 CTX_DROPOUT = float(os.environ.get("TRAIN_CTX_DROPOUT", "0"))
+# Final-review method "channel-restricted context training" (CRCT): with this probability per training dialogue, a
+# random 20 % of its utterances are hidden completely and every other utterance keeps ONE non-verbal channel (audio
+# or video, chosen at random); the model must recognise the hidden utterances from their neighbours' voice or face.
+# 0 = off (default).
+CRCT_PROB = float(os.environ.get("TRAIN_CRCT", "0"))
+CRCT_TARGET_SHARE = 0.2
 LEARNING_RATE = 3e-4
 WEIGHT_DECAY = 1e-4
 FOCAL_GAMMA = 1.0
@@ -282,6 +288,22 @@ def apply_context_dropout(text, audio, video, p):
     return tuple(out)
 
 
+def apply_crct(text, audio, video, p, share=CRCT_TARGET_SHARE):
+    """Channel-restricted context training step (see CRCT_PROB). Inputs are [batch, utterances, dim]."""
+    n = text.shape[1]
+    if p <= 0 or n < 2 or random.random() >= p:
+        return text, audio, video
+    k = max(1, int(round(share * n)))
+    hidden = torch.zeros(n, dtype=torch.bool, device=text.device)
+    hidden[torch.randperm(n, device=text.device)[:k]] = True
+    keep_audio = random.random() < 0.5
+    others = (~hidden).to(text.dtype).view(1, n, 1)
+    text = text * 0.0  # hidden targets lose everything; the other utterances keep a single non-verbal channel
+    audio = audio * others if keep_audio else audio * 0.0
+    video = video * 0.0 if keep_audio else video * others
+    return text, audio, video
+
+
 def update_dropout_probs(current_probs, epoch_aux_accuracy):
     """Recompute per-modality dropout probabilities from this epoch's
     auxiliary-head accuracy (AMB-DSGDN's idea, adapted to epoch
@@ -336,6 +358,7 @@ def run_epoch(model, loader, criterion, optimizer=None, dropout_probs=None, ema_
             if train_mode:
                 text, audio, video = apply_modality_dropout(text, audio, video, dropout_probs)
                 text, audio, video = apply_context_dropout(text, audio, video, CTX_DROPOUT)
+                text, audio, video = apply_crct(text, audio, video, CRCT_PROB)
 
             logits, modality_weights, aux_logits, sentiment_logits = model(
                 text, audio, video, speaker_slots=speaker_slots, return_aux=True
@@ -436,6 +459,7 @@ def main():
     print(f"Auxiliary unimodal loss weight: {AUX_LOSS_WEIGHT}")
     print(f"Sentiment auxiliary loss weight: {SENTIMENT_LOSS_WEIGHT}")
     print(f"Context dropout (per utterance and modality): {CTX_DROPOUT}")
+    print(f"Channel-restricted context training (CRCT) probability per dialogue: {CRCT_PROB}")
     print(f"Graph attention fusion: {'enabled' if USE_GRAPH_FUSION else 'DISABLED for this run'} (cross-modal + temporal + same-speaker edges, see models/graph_fusion.py)")
     print("=" * 70)
 
@@ -541,6 +565,7 @@ def main():
                         "focal_gamma": FOCAL_GAMMA,
                         "seed": SEED,
                         "ctx_dropout": CTX_DROPOUT,
+                        "crct": CRCT_PROB,
                         "strategy": (
                             "single-stage adaptive fusion, moderate class weighting, gentle focal loss, "
                             "adaptive modality dropout, modality-weight cap penalty, auxiliary unimodal losses, "
