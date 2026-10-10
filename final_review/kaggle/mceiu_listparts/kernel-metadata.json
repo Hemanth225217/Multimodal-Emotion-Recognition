@@ -1,0 +1,16 @@
+{
+  "id": "hemanths0411/mc-eiu-listparts",
+  "title": "MC-EIU Listparts",
+  "code_file": "listparts.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": false,
+  "keywords": [],
+  "dataset_sources": [],
+  "kernel_sources": ["hemanths0411/mc-eiu-extract"],
+  "competition_sources": [],
+  "model_sources": []
+}

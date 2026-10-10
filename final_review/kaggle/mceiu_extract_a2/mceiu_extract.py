@@ -40,7 +40,7 @@ ARCHIVES = ["English_Dialogues_1.zip", "English_Dialogues_2.zip", "English_Dialo
 # Which archives this run processes (1-based). One archive per run keeps every run far below Kaggle's 12-hour limit
 # (the all-in-one run of 8 Oct took 4.7 h + 6.5 h for the two zips and was stopped during the RAR). With a subset,
 # the run saves its part file (and, if archive 1 is included, the text features); the CPU kernel mc-eiu-merge joins them.
-ONLY = [1, 2, 3]
+ONLY = [2]
 SPLIT_SIZES = {"train": 2807, "dev": 400, "test": 806}
 SEED = 42
 SAMPLE_RATE = 16000

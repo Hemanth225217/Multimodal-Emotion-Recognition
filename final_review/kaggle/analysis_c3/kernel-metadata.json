@@ -14,7 +14,7 @@
   ],
   "kernel_sources": [
     "hemanths0411/meld-mceiu-train",
-    "hemanths0411/mc-eiu-extract"
+    "hemanths0411/mc-eiu-merge"
   ],
   "competition_sources": [],
   "model_sources": []

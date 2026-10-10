@@ -1,7 +1,7 @@
 {
-  "id": "hemanths0411/meld-mceiu-train",
-  "title": "MELD MCEIU Train",
-  "code_file": "train_c3.py",
+  "id": "hemanths0411/mc-eiu-extract-a1",
+  "title": "MC-EIU Extract A1",
+  "code_file": "mceiu_extract.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": true,
@@ -11,12 +11,8 @@
   "keywords": [
     "gpu"
   ],
-  "dataset_sources": [
-    "hemanths0411/meld-emotion-features"
-  ],
-  "kernel_sources": [
-    "hemanths0411/mc-eiu-merge"
-  ],
+  "dataset_sources": [],
+  "kernel_sources": [],
   "competition_sources": [],
   "model_sources": [],
   "machine_shape": "NvidiaTeslaT4"
