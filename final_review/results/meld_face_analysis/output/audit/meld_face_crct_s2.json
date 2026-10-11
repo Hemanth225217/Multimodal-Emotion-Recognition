@@ -1,0 +1,141 @@
+{
+ "checkpoint": "/kaggle/input/notebooks/hemanths0411/meld-face-train/output/checkpoints/meld_face_crct_s2.pt",
+ "audio_path": null,
+ "split": "val",
+ "n": 1108,
+ "fused": {
+  "accuracy": 0.6092057761732852,
+  "weighted_f1": 0.5994351478815511,
+  "macro_f1": 0.4683277212549744
+ },
+ "weights": {
+  "text": {
+   "mean": 0.4182482659816742,
+   "sd": 0.0385337695479393,
+   "min": 0.18527480959892273,
+   "max": 0.5106439590454102
+  },
+  "audio": {
+   "mean": 0.2179965376853943,
+   "sd": 0.031026003882288933,
+   "min": 0.11833111941814423,
+   "max": 0.3485904037952423
+  },
+  "video": {
+   "mean": 0.3637552559375763,
+   "sd": 0.024653850123286247,
+   "min": 0.30024024844169617,
+   "max": 0.5289793014526367
+  }
+ },
+ "text_largest_weight_share": 0.8393501805054152,
+ "mean_text_weight_by_gold_emotion": {
+  "neutral": 0.42124584317207336,
+  "surprise": 0.4185047447681427,
+  "fear": 0.408285915851593,
+  "sadness": 0.42588236927986145,
+  "joy": 0.42131635546684265,
+  "disgust": 0.43286627531051636,
+  "anger": 0.40050333738327026
+ },
+ "text_weight_range_across_emotions": 0.032362937927246094,
+ "single_modality": {
+  "text": {
+   "accuracy": 0.5667870036101083,
+   "classes_predicted": 7,
+   "share_neutral": 0.5117328519855595,
+   "counts": {
+    "neutral": 567,
+    "joy": 186,
+    "surprise": 132,
+    "sadness": 89,
+    "anger": 67,
+    "disgust": 35,
+    "fear": 32
+   }
+  },
+  "audio": {
+   "accuracy": 0.44223826714801445,
+   "classes_predicted": 6,
+   "share_neutral": 0.5974729241877257,
+   "counts": {
+    "neutral": 662,
+    "anger": 352,
+    "surprise": 68,
+    "joy": 17,
+    "fear": 6,
+    "sadness": 3
+   }
+  },
+  "video": {
+   "accuracy": 0.4151624548736462,
+   "classes_predicted": 6,
+   "share_neutral": 0.9458483754512635,
+   "counts": {
+    "neutral": 1048,
+    "surprise": 30,
+    "joy": 18,
+    "sadness": 9,
+    "anger": 2,
+    "fear": 1
+   }
+  }
+ },
+ "ablation": {
+  "text_only": {
+   "accuracy": 0.5667870036101083,
+   "weighted_f1": 0.5493632423054896,
+   "macro_f1": 0.4133444548341787
+  },
+  "audio_only": {
+   "accuracy": 0.44223826714801445,
+   "weighted_f1": 0.36682058782093313,
+   "macro_f1": 0.19962470085741466
+  },
+  "video_only": {
+   "accuracy": 0.4151624548736462,
+   "weighted_f1": 0.27122030220802995,
+   "macro_f1": 0.10935335396998246
+  },
+  "text+audio": {
+   "accuracy": 0.5965703971119134,
+   "weighted_f1": 0.5880447066510959,
+   "macro_f1": 0.460667840735075
+  },
+  "text+video": {
+   "accuracy": 0.5893501805054152,
+   "weighted_f1": 0.5699137946261529,
+   "macro_f1": 0.42639529246174535
+  },
+  "audio+video": {
+   "accuracy": 0.463898916967509,
+   "weighted_f1": 0.42043554162498764,
+   "macro_f1": 0.258404693646026
+  },
+  "all": {
+   "accuracy": 0.6092057761732852,
+   "weighted_f1": 0.5994351478815511,
+   "macro_f1": 0.4683277212549744
+  }
+ },
+ "non_neutral_n": 639,
+ "audio_right_on_non_neutral": 133,
+ "audio_right_fused_wrong_non_neutral": 39,
+ "text_audio_disagree_n": 633,
+ "fused_follows_text_when_text_audio_disagree": 0.7298578199052133,
+ "fused_follows_audio_when_text_audio_disagree": 0.18799368088467613,
+ "single_modality_agreement": {
+  "all_three_agree": {
+   "n": 385,
+   "fused_accuracy": 0.7168831168831169
+  },
+  "two_agree": {
+   "n": 502,
+   "fused_accuracy": 0.5776892430278885
+  },
+  "all_differ": {
+   "n": 221,
+   "fused_accuracy": 0.49321266968325794
+  }
+ }
+}

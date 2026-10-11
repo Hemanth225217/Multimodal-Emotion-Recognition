@@ -194,3 +194,15 @@
   99.6-99.8 % of utterances (train 9,965 / 9,988, dev 1,104 / 1,108, test 2,604 / 2,610); most clips have a face in all
   8 frames. Self-test 32 / 32. `meld-face-train` (meld_face, meld_face_crct x 3 seeds) running; analysis follows.
 - The session's automatic launches were paused from about 08:30 to 22:00 (laptop asleep); GPU used 20.6 / 30 h.
+- **Face-feature models** (`meld-face-train`, `meld-face-analysis`; validation; seeds 42 / 1 / 2):
+  meld_face wF1 59.16 / 58.77 / 58.01, mean 58.65 (SD 0.58), acc 60.89, mF1 41.65 (+0.76 wF1 vs the ResNet control 57.89);
+  meld_face_crct wF1 58.73 / 59.72 / 59.94, mean 59.47 (SD 0.64), acc 61.28, mF1 43.68 (+1.58 vs control; every seed
+  above every control seed; +0.82 over face alone).
+  Audit (control / CRCT / face / face+CRCT): accuracy added by video +0.15 / +0.21 / +1.20 / +1.17; classes predicted by the
+  video branch alone 1.0 / 1.7 / 3.7 / 5.3; text has the largest weight on 99 / 98 / 98 / 83 % of utterances; video
+  weight 0.267 / 0.327 / 0.290 / 0.342.
+  Context attribution: hiding the FACES of all context -0.36 (face) and -0.30 (face+CRCT) points (control +0.03); words
+  of all context -1.60 (face), -2.96 (face+CRCT).
+  **Reading:** (1) with informative face features the target's own video is used (diagnosis confirmed); (2) the
+  neighbours' faces still contribute almost nothing; (3) CRCT helps once the visual input is informative: best
+  validation result so far and a less text-dominated fusion. Validation only; test scored once on 13 Oct.

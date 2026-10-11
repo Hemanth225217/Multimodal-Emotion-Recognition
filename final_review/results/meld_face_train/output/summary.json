@@ -1,0 +1,91 @@
+{
+ "repo_commit": "d2a69bbe6642af4264b0ff689861c510c3e57345",
+ "mceiu_coverage": null,
+ "runs": [
+  {
+   "name": "meld_face_s42",
+   "job": "meld_face",
+   "data": "meld_face",
+   "seed": 42,
+   "ctx_dropout": 0.0,
+   "crct": 0.0,
+   "epoch": 10,
+   "val_accuracy": 0.6110108303249098,
+   "val_weighted_f1": 0.5915528581065683,
+   "val_macro_f1": 0.4403517680920417,
+   "status": "ok",
+   "minutes": 7.4
+  },
+  {
+   "name": "meld_face_crct_s42",
+   "job": "meld_face_crct",
+   "data": "meld_face",
+   "seed": 42,
+   "ctx_dropout": 0.0,
+   "crct": 0.25,
+   "epoch": 10,
+   "val_accuracy": 0.618231046931408,
+   "val_weighted_f1": 0.5873273972446539,
+   "val_macro_f1": 0.4086152392887098,
+   "status": "ok",
+   "minutes": 6.9
+  },
+  {
+   "name": "meld_face_s1",
+   "job": "meld_face",
+   "data": "meld_face",
+   "seed": 1,
+   "ctx_dropout": 0.0,
+   "crct": 0.0,
+   "epoch": 5,
+   "val_accuracy": 0.6137184115523465,
+   "val_weighted_f1": 0.5877381944688366,
+   "val_macro_f1": 0.4019109311342132,
+   "status": "ok",
+   "minutes": 4.8
+  },
+  {
+   "name": "meld_face_crct_s1",
+   "job": "meld_face_crct",
+   "data": "meld_face",
+   "seed": 1,
+   "ctx_dropout": 0.0,
+   "crct": 0.25,
+   "epoch": 9,
+   "val_accuracy": 0.6110108303249098,
+   "val_weighted_f1": 0.5972074047320157,
+   "val_macro_f1": 0.4333611433199315,
+   "status": "ok",
+   "minutes": 6.5
+  },
+  {
+   "name": "meld_face_s2",
+   "job": "meld_face",
+   "data": "meld_face",
+   "seed": 2,
+   "ctx_dropout": 0.0,
+   "crct": 0.0,
+   "epoch": 6,
+   "val_accuracy": 0.601985559566787,
+   "val_weighted_f1": 0.5801243202477723,
+   "val_macro_f1": 0.4072681999470465,
+   "status": "ok",
+   "minutes": 5.2
+  },
+  {
+   "name": "meld_face_crct_s2",
+   "job": "meld_face_crct",
+   "data": "meld_face",
+   "seed": 2,
+   "ctx_dropout": 0.0,
+   "crct": 0.25,
+   "epoch": 15,
+   "val_accuracy": 0.6092057761732852,
+   "val_weighted_f1": 0.5994351478815511,
+   "val_macro_f1": 0.4683277212549744,
+   "status": "ok",
+   "minutes": 9.0
+  }
+ ],
+ "total_minutes": 40.8
+}
