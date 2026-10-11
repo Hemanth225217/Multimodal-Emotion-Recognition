@@ -176,3 +176,13 @@
   (SD 0.42). Difference to control: context dropout +0.58 (just above the +0.5 Gate-1 rule, but within one SD of the
   seed spread), CRCT -0.43 (no accuracy gain). CRCT's purpose is to make context voice/face matter; judged by the
   context attribution (kernel `meld-ctx-crct-analysis`, launched). Results: `final_review/results/meld_ctx_crct/`.
+- **Context attribution + audit of the MELD context-dropout and CRCT models** (`meld-ctx-crct-analysis`, CPU,
+  validation), compared with the three L1 control models. Mean change in accuracy when hiding (per seed 42 / 1 / 2):
+  all-context WORDS: control +0.76 (+0.9 / -0.5 / +1.9), context dropout -1.09 (+0.5 / -0.7 / -3.0),
+  CRCT -6.53 (-10.0 / -6.6 / -3.0; 2 of 3 intervals exclude 0; 39 % of predictions flip);
+  all-context VOICE: -0.64 / -0.18 / -0.76; all-context FACE: +0.03 / -0.03 / -0.09 (control / ctx / CRCT).
+  Audit: audio weight 0.212 / 0.218 / 0.173; video weight 0.267 / 0.290 / 0.327; fused follows text in text-audio
+  disagreements 84.6 / 82.4 / 85.1 %; the video branch alone predicts neutral for 100 % of utterances in every model.
+  **Reading:** CRCT did NOT make context voice/face matter (its intended goal; negative result) and costs -0.43 val wF1;
+  as a side effect it made every seed strongly and consistently dependent on the context's WORDS. The face channel
+  cannot matter with these video features (ResNet-18 ImageNet, no face detection): the video-only prediction is constant.
