@@ -119,6 +119,9 @@ FINAL_MODEL_PATH = Path(os.environ.get("TRAIN_OUTPUT_PATH", str(_CONFIG_FINAL_MO
 SEED = int(os.environ.get("TRAIN_SEED", _CONFIG_SEED))
 
 EPOCHS = int(os.environ.get("TRAIN_EPOCHS", "25"))
+# Early stopping is not allowed before this epoch (default 0 = original behaviour). Added for MC-EIU, where every run
+# first sits on an all-neutral plateau for 6-7 epochs, right at the edge of the patience of 6.
+MIN_EPOCHS = int(os.environ.get("TRAIN_MIN_EPOCHS", "0"))
 # Final-review "context dropout" (C3): each modality of each utterance is zeroed independently with this probability
 # during training, so hiding a neighbour's words / voice / face at analysis time is in-distribution. 0 = off.
 CTX_DROPOUT = float(os.environ.get("TRAIN_CTX_DROPOUT", "0"))
@@ -568,6 +571,7 @@ def main():
                         "seed": SEED,
                         "ctx_dropout": CTX_DROPOUT,
                         "crct": CRCT_PROB,
+                        "min_epochs": MIN_EPOCHS,
                         "strategy": (
                             "single-stage adaptive fusion, moderate class weighting, gentle focal loss, "
                             "adaptive modality dropout, modality-weight cap penalty, auxiliary unimodal losses, "
@@ -591,7 +595,7 @@ def main():
             patience_counter += 1
             print(f"  no improvement ({patience_counter}/{EARLY_STOP_PATIENCE})")
 
-        if patience_counter >= EARLY_STOP_PATIENCE:
+        if patience_counter >= EARLY_STOP_PATIENCE and epoch >= MIN_EPOCHS:
             print("\nEarly stopping triggered.")
             break
 
