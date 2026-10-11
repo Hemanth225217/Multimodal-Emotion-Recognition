@@ -1,0 +1,233 @@
+======================================================================
+FINAL MODEL TRAINING - adaptive tri-modal fusion
+Device: cuda   Text=768D Audio=1024D Video=512D -> 7 emotions
+Modality dropout: starts text=40% audio=15% video=15%, then adapts each epoch from auxiliary-head accuracy
+Modality-weight cap: penalty 1.0x for any weight above 60%
+Auxiliary unimodal loss weight: 0.3
+Sentiment auxiliary loss weight: 0.0
+Context dropout (per utterance and modality): 0.0
+Channel-restricted context training (CRCT) probability per dialogue: 0.25
+Graph attention fusion: DISABLED for this run (cross-modal + temporal + same-speaker edges, see models/graph_fusion.py)
+======================================================================
+
+======================================================================
+TRAIN TRI-MODAL DATASET
+======================================================================
+TRAIN dialogues: 2807
+TRAIN usable utterances: 31312
+TRAIN feature vectors before alignment: 31312
+TRAIN dialogues requiring feature truncation: 0
+TRAIN dialogues with insufficient features: 0
+TRAIN missing visual utterances: 0
+TRAIN visual features loaded: 31312
+TRAIN visual feature dimension: 512
+======================================================================
+
+======================================================================
+VAL TRI-MODAL DATASET
+======================================================================
+VAL dialogues: 400
+VAL usable utterances: 4787
+VAL feature vectors before alignment: 4787
+VAL dialogues requiring feature truncation: 0
+VAL dialogues with insufficient features: 0
+VAL missing visual utterances: 0
+VAL visual features loaded: 4787
+VAL visual feature dimension: 512
+======================================================================
+
+Class distribution & training weights:
+  neutral   : 15001 (47.91%)  weight=0.497
+  surprise  :  1247 ( 3.98%)  weight=1.088
+  fear      :   871 ( 2.78%)  weight=1.498
+  sadness   :  1888 ( 6.03%)  weight=0.929
+  joy       :  8602 (27.47%)  weight=0.497
+  disgust   :   553 ( 1.77%)  weight=1.807
+  anger     :  3150 (10.06%)  weight=0.685
+
+Model parameters: 8,687,906
+
+======================================================================
+EPOCH 1/25  (lr=0.000300)
+======================================================================
+dropout probs (start of epoch, evolves per-batch during training): text=40%, audio=15%, video=15%
+  step 200/2807  loss=0.6136  auxLoss=1.2937  sentLoss=0.9730  capPenalty=0.0000  entropy=1.0658  running_acc=0.4300
+  step 400/2807  loss=0.8535  auxLoss=1.7371  sentLoss=0.8503  capPenalty=0.0000  entropy=1.0935  running_acc=0.4309
+  step 600/2807  loss=1.0178  auxLoss=2.2151  sentLoss=0.7684  capPenalty=0.0000  entropy=1.0793  running_acc=0.4590
+  step 800/2807  loss=0.5990  auxLoss=1.0199  sentLoss=0.7015  capPenalty=0.0000  entropy=1.0794  running_acc=0.4646
+  step 1000/2807  loss=0.1227  auxLoss=0.2760  sentLoss=0.8880  capPenalty=0.0000  entropy=1.0330  running_acc=0.4674
+  step 1200/2807  loss=0.1248  auxLoss=0.3190  sentLoss=0.7954  capPenalty=0.0000  entropy=1.0356  running_acc=0.4794
+  step 1400/2807  loss=1.1137  auxLoss=1.5851  sentLoss=0.6932  capPenalty=0.0000  entropy=1.0578  running_acc=0.4790
+  step 1600/2807  loss=0.3538  auxLoss=0.9045  sentLoss=0.6456  capPenalty=0.0000  entropy=1.0725  running_acc=0.4754
+  step 1800/2807  loss=0.4703  auxLoss=1.0099  sentLoss=0.6146  capPenalty=0.0000  entropy=1.0760  running_acc=0.4737
+  step 2000/2807  loss=0.2251  auxLoss=0.6441  sentLoss=0.6305  capPenalty=0.0000  entropy=1.0805  running_acc=0.4781
+  step 2200/2807  loss=0.7152  auxLoss=1.1610  sentLoss=0.7226  capPenalty=0.0000  entropy=1.0888  running_acc=0.4739
+  step 2400/2807  loss=0.4073  auxLoss=0.9679  sentLoss=0.7292  capPenalty=0.0000  entropy=1.0865  running_acc=0.4746
+  step 2600/2807  loss=1.0863  auxLoss=1.7059  sentLoss=0.6738  capPenalty=0.0000  entropy=1.0863  running_acc=0.4734
+  step 2800/2807  loss=0.2084  auxLoss=0.5055  sentLoss=0.7118  capPenalty=0.0000  entropy=1.0896  running_acc=0.4729
+train: loss=0.8987 acc=0.4728 macroF1=0.0980 weightedF1=0.3189 weightEntropy=1.0724/1.0986
+train aux accuracy: text=0.4756, audio=0.4725, video=0.4732  sentiment_accuracy=0.9330
+val:   loss=0.9189 acc=0.4496 macroF1=0.0886 weightedF1=0.2788  sentiment_accuracy=1.0000  (70s)
+  -> new best model saved to /kaggle/temp/repo_mceiu/models/ft_mceiu_crct_s42.pt
+
+======================================================================
+EPOCH 2/25  (lr=0.000300)
+======================================================================
+dropout probs (start of epoch, evolves per-batch during training): text=16%, audio=15%, video=15%
+  step 200/2807  loss=0.3778  auxLoss=1.1165  sentLoss=0.6945  capPenalty=0.0000  entropy=1.0875  running_acc=0.5061
+  step 400/2807  loss=1.8514  auxLoss=2.3846  sentLoss=0.6502  capPenalty=0.0000  entropy=1.0874  running_acc=0.5009
+  step 600/2807  loss=1.0141  auxLoss=1.9754  sentLoss=0.6982  capPenalty=0.0000  entropy=1.0890  running_acc=0.4801
+  step 800/2807  loss=0.4044  auxLoss=0.8559  sentLoss=0.6440  capPenalty=0.0000  entropy=1.0884  running_acc=0.4768
+  step 1000/2807  loss=2.0330  auxLoss=2.5024  sentLoss=0.6483  capPenalty=0.0000  entropy=1.0927  running_acc=0.4607
+  step 1200/2807  loss=0.8040  auxLoss=1.1119  sentLoss=0.8208  capPenalty=0.0000  entropy=1.0775  running_acc=0.4588
+  step 1400/2807  loss=0.6948  auxLoss=1.0949  sentLoss=0.7700  capPenalty=0.0000  entropy=1.0876  running_acc=0.4680
+  step 1600/2807  loss=2.3901  auxLoss=2.5502  sentLoss=0.6439  capPenalty=0.0000  entropy=1.0758  running_acc=0.4707
+  step 1800/2807  loss=1.1653  auxLoss=1.5997  sentLoss=0.7006  capPenalty=0.0000  entropy=1.0636  running_acc=0.4716
+  step 2000/2807  loss=0.6310  auxLoss=1.6146  sentLoss=0.7112  capPenalty=0.0000  entropy=1.0548  running_acc=0.4738
+  step 2200/2807  loss=2.6936  auxLoss=2.8418  sentLoss=0.7374  capPenalty=0.0000  entropy=1.0415  running_acc=0.4782
+  step 2400/2807  loss=0.4374  auxLoss=0.9554  sentLoss=0.7924  capPenalty=0.0000  entropy=1.0410  running_acc=0.4803
+  step 2600/2807  loss=0.2928  auxLoss=0.6951  sentLoss=0.7518  capPenalty=0.0000  entropy=1.0413  running_acc=0.4777
+  step 2800/2807  loss=0.2774  auxLoss=0.6872  sentLoss=0.7362  capPenalty=0.0000  entropy=1.0701  running_acc=0.4786
+train: loss=0.8850 acc=0.4790 macroF1=0.0925 weightedF1=0.3103 weightEntropy=1.0679/1.0986
+train aux accuracy: text=0.4832, audio=0.4773, video=0.4790  sentiment_accuracy=0.9989
+val:   loss=0.9234 acc=0.4496 macroF1=0.0886 weightedF1=0.2788  sentiment_accuracy=1.0000  (70s)
+  no improvement (1/6)
+
+======================================================================
+EPOCH 3/25  (lr=0.000300)
+======================================================================
+dropout probs (start of epoch, evolves per-batch during training): text=15%, audio=15%, video=15%
+  step 200/2807  loss=1.7649  auxLoss=2.4617  sentLoss=0.7963  capPenalty=0.0000  entropy=1.0497  running_acc=0.5194
+  step 400/2807  loss=0.3301  auxLoss=0.8011  sentLoss=0.7423  capPenalty=0.0000  entropy=1.0387  running_acc=0.4794
+  step 600/2807  loss=0.8636  auxLoss=1.3320  sentLoss=0.7179  capPenalty=0.0000  entropy=1.0342  running_acc=0.4724
+  step 800/2807  loss=1.0302  auxLoss=2.0372  sentLoss=0.7867  capPenalty=0.0000  entropy=1.0737  running_acc=0.4736
+  step 1000/2807  loss=0.2309  auxLoss=0.6151  sentLoss=0.7677  capPenalty=0.0000  entropy=1.0612  running_acc=0.4689
+  step 1200/2807  loss=0.1819  auxLoss=0.3940  sentLoss=0.8099  capPenalty=0.0000  entropy=1.0418  running_acc=0.4735
+  step 1400/2807  loss=0.3498  auxLoss=0.8207  sentLoss=0.7602  capPenalty=0.0000  entropy=1.0535  running_acc=0.4727
+  step 1600/2807  loss=0.8644  auxLoss=1.7277  sentLoss=0.7247  capPenalty=0.0000  entropy=1.0454  running_acc=0.4711
+  step 1800/2807  loss=0.2087  auxLoss=0.5579  sentLoss=0.7043  capPenalty=0.0000  entropy=1.0329  running_acc=0.4786
+  step 2000/2807  loss=0.8589  auxLoss=1.3194  sentLoss=0.7175  capPenalty=0.0000  entropy=1.0387  running_acc=0.4781
+  step 2200/2807  loss=0.9316  auxLoss=1.6817  sentLoss=0.6949  capPenalty=0.0000  entropy=1.0774  running_acc=0.4783
+  step 2400/2807  loss=0.4472  auxLoss=0.7809  sentLoss=0.7010  capPenalty=0.0000  entropy=1.0854  running_acc=0.4773
+  step 2600/2807  loss=0.4889  auxLoss=0.7968  sentLoss=0.6912  capPenalty=0.0000  entropy=1.0845  running_acc=0.4799
+  step 2800/2807  loss=0.4306  auxLoss=1.0948  sentLoss=0.7549  capPenalty=0.0000  entropy=1.0884  running_acc=0.4789
+train: loss=0.8841 acc=0.4791 macroF1=0.0925 weightedF1=0.3104 weightEntropy=1.0585/1.0986
+train aux accuracy: text=0.4931, audio=0.4776, video=0.4783  sentiment_accuracy=0.9983
+val:   loss=0.9115 acc=0.4496 macroF1=0.0886 weightedF1=0.2788  sentiment_accuracy=1.0000  (69s)
+  no improvement (2/6)
+
+======================================================================
+EPOCH 4/25  (lr=0.000300)
+======================================================================
+dropout probs (start of epoch, evolves per-batch during training): text=16%, audio=15%, video=15%
+  step 200/2807  loss=0.6165  auxLoss=1.2000  sentLoss=0.7756  capPenalty=0.0000  entropy=1.0877  running_acc=0.5035
+  step 400/2807  loss=0.2558  auxLoss=0.6222  sentLoss=0.7372  capPenalty=0.0000  entropy=1.0854  running_acc=0.4754
+  step 600/2807  loss=0.4593  auxLoss=1.0413  sentLoss=0.7217  capPenalty=0.0000  entropy=1.0832  running_acc=0.4766
+  step 800/2807  loss=0.6729  auxLoss=1.3049  sentLoss=0.6108  capPenalty=0.0000  entropy=1.0625  running_acc=0.4734
+  step 1000/2807  loss=1.4572  auxLoss=1.8618  sentLoss=0.6378  capPenalty=0.0000  entropy=1.0785  running_acc=0.4633
+  step 1200/2807  loss=0.9930  auxLoss=1.3083  sentLoss=0.6866  capPenalty=0.0000  entropy=1.0667  running_acc=0.4760
+  step 1400/2807  loss=2.1364  auxLoss=2.8508  sentLoss=0.5967  capPenalty=0.0000  entropy=1.0813  running_acc=0.4822
+  step 1600/2807  loss=1.1125  auxLoss=1.2624  sentLoss=0.7438  capPenalty=0.0000  entropy=1.0785  running_acc=0.4824
+  step 1800/2807  loss=1.4317  auxLoss=1.7182  sentLoss=0.6299  capPenalty=0.0000  entropy=1.0759  running_acc=0.4793
+  step 2000/2807  loss=0.1795  auxLoss=0.3595  sentLoss=0.6482  capPenalty=0.0000  entropy=1.0690  running_acc=0.4819
+  step 2200/2807  loss=0.5837  auxLoss=1.2334  sentLoss=0.7598  capPenalty=0.0000  entropy=1.0580  running_acc=0.4805
+  step 2400/2807  loss=1.4599  auxLoss=1.9904  sentLoss=0.8197  capPenalty=0.0000  entropy=1.0649  running_acc=0.4787
+  step 2600/2807  loss=0.2974  auxLoss=0.6788  sentLoss=0.6583  capPenalty=0.0000  entropy=1.0572  running_acc=0.4776
+  step 2800/2807  loss=0.2695  auxLoss=0.8188  sentLoss=0.6101  capPenalty=0.0000  entropy=1.0727  running_acc=0.4790
+train: loss=0.8797 acc=0.4791 macroF1=0.0925 weightedF1=0.3104 weightEntropy=1.0719/1.0986
+train aux accuracy: text=0.4890, audio=0.4800, video=0.4786  sentiment_accuracy=0.9941
+val:   loss=0.9177 acc=0.4496 macroF1=0.0886 weightedF1=0.2788  sentiment_accuracy=1.0000  (70s)
+  no improvement (3/6)
+
+======================================================================
+EPOCH 5/25  (lr=0.000150)
+======================================================================
+dropout probs (start of epoch, evolves per-batch during training): text=15%, audio=15%, video=15%
+  step 200/2807  loss=0.2676  auxLoss=0.6883  sentLoss=0.6436  capPenalty=0.0000  entropy=1.0687  running_acc=0.4971
+  step 400/2807  loss=0.5392  auxLoss=1.3103  sentLoss=0.6191  capPenalty=0.0000  entropy=1.0715  running_acc=0.4944
+  step 600/2807  loss=0.9199  auxLoss=1.1876  sentLoss=0.5933  capPenalty=0.0000  entropy=1.0614  running_acc=0.4779
+  step 800/2807  loss=0.4211  auxLoss=0.8241  sentLoss=0.5693  capPenalty=0.0000  entropy=1.0496  running_acc=0.4721
+  step 1000/2807  loss=0.2827  auxLoss=0.6576  sentLoss=0.6078  capPenalty=0.0000  entropy=1.0686  running_acc=0.4766
+  step 1200/2807  loss=1.3700  auxLoss=1.8541  sentLoss=0.6144  capPenalty=0.0000  entropy=1.0575  running_acc=0.4749
+  step 1400/2807  loss=0.2257  auxLoss=0.5737  sentLoss=0.5700  capPenalty=0.0000  entropy=1.0527  running_acc=0.4740
+  step 1600/2807  loss=2.1523  auxLoss=3.0272  sentLoss=0.8291  capPenalty=0.0000  entropy=1.0460  running_acc=0.4793
+  step 1800/2807  loss=1.2382  auxLoss=1.7963  sentLoss=0.5830  capPenalty=0.0000  entropy=1.0578  running_acc=0.4804
+  step 2000/2807  loss=0.4084  auxLoss=1.0190  sentLoss=0.6253  capPenalty=0.0000  entropy=1.0825  running_acc=0.4782
+  step 2200/2807  loss=0.4602  auxLoss=1.2072  sentLoss=0.6257  capPenalty=0.0000  entropy=1.0707  running_acc=0.4785
+  step 2400/2807  loss=0.4584  auxLoss=1.0013  sentLoss=0.7312  capPenalty=0.0000  entropy=1.0445  running_acc=0.4788
+  step 2600/2807  loss=0.9635  auxLoss=1.6945  sentLoss=0.6695  capPenalty=0.0000  entropy=1.0752  running_acc=0.4803
+  step 2800/2807  loss=0.4729  auxLoss=1.3640  sentLoss=0.6940  capPenalty=0.0000  entropy=0.9873  running_acc=0.4794
+train: loss=0.8764 acc=0.4790 macroF1=0.0925 weightedF1=0.3103 weightEntropy=1.0595/1.0986
+train aux accuracy: text=0.5028, audio=0.4826, video=0.4790  sentiment_accuracy=0.9973
+val:   loss=0.8959 acc=0.4496 macroF1=0.0886 weightedF1=0.2788  sentiment_accuracy=1.0000  (70s)
+  no improvement (4/6)
+
+======================================================================
+EPOCH 6/25  (lr=0.000150)
+======================================================================
+dropout probs (start of epoch, evolves per-batch during training): text=17%, audio=15%, video=15%
+  step 200/2807  loss=0.3763  auxLoss=0.7961  sentLoss=0.7910  capPenalty=0.0000  entropy=1.0964  running_acc=0.5004
+  step 400/2807  loss=1.3963  auxLoss=1.7202  sentLoss=0.7872  capPenalty=0.0000  entropy=1.0767  running_acc=0.4803
+  step 600/2807  loss=1.6923  auxLoss=2.3354  sentLoss=0.6072  capPenalty=0.0000  entropy=0.9744  running_acc=0.4822
+  step 800/2807  loss=0.5227  auxLoss=1.1758  sentLoss=0.7243  capPenalty=0.0000  entropy=1.0649  running_acc=0.4710
+  step 1000/2807  loss=0.6899  auxLoss=1.0112  sentLoss=0.7392  capPenalty=0.0000  entropy=1.0777  running_acc=0.4688
+  step 1200/2807  loss=2.2467  auxLoss=2.6721  sentLoss=0.6305  capPenalty=0.0000  entropy=1.0649  running_acc=0.4708
+  step 1400/2807  loss=1.2885  auxLoss=1.7812  sentLoss=0.6255  capPenalty=0.0000  entropy=1.0719  running_acc=0.4654
+  step 1600/2807  loss=0.3236  auxLoss=1.1437  sentLoss=0.6516  capPenalty=0.0000  entropy=1.0867  running_acc=0.4703
+  step 1800/2807  loss=0.1895  auxLoss=0.4084  sentLoss=0.6534  capPenalty=0.0000  entropy=1.0880  running_acc=0.4686
+  step 2000/2807  loss=0.3306  auxLoss=1.2959  sentLoss=0.6189  capPenalty=0.0000  entropy=1.0817  running_acc=0.4737
+  step 2200/2807  loss=0.5651  auxLoss=1.0659  sentLoss=0.5773  capPenalty=0.0000  entropy=1.0710  running_acc=0.4735
+  step 2400/2807  loss=0.2879  auxLoss=0.6298  sentLoss=0.5780  capPenalty=0.0000  entropy=1.0691  running_acc=0.4784
+  step 2600/2807  loss=1.2360  auxLoss=1.6802  sentLoss=0.5292  capPenalty=0.0000  entropy=1.0920  running_acc=0.4776
+  step 2800/2807  loss=0.2820  auxLoss=0.9473  sentLoss=0.6822  capPenalty=0.0000  entropy=1.0575  running_acc=0.4787
+train: loss=0.8691 acc=0.4784 macroF1=0.1055 weightedF1=0.3341 weightEntropy=1.0713/1.0986
+train aux accuracy: text=0.5037, audio=0.4804, video=0.4781  sentiment_accuracy=0.9998
+val:   loss=0.9002 acc=0.4496 macroF1=0.0886 weightedF1=0.2788  sentiment_accuracy=1.0000  (69s)
+  no improvement (5/6)
+
+======================================================================
+EPOCH 7/25  (lr=0.000150)
+======================================================================
+dropout probs (start of epoch, evolves per-batch during training): text=18%, audio=15%, video=15%
+  step 200/2807  loss=0.2427  auxLoss=0.3398  sentLoss=0.6611  capPenalty=0.0000  entropy=1.0886  running_acc=0.4514
+  step 400/2807  loss=0.5390  auxLoss=0.8581  sentLoss=0.6343  capPenalty=0.0000  entropy=1.0833  running_acc=0.4577
+  step 600/2807  loss=0.4468  auxLoss=1.0012  sentLoss=0.6585  capPenalty=0.0000  entropy=1.0823  running_acc=0.4675
+  step 800/2807  loss=0.9290  auxLoss=1.0793  sentLoss=0.7273  capPenalty=0.0000  entropy=1.0298  running_acc=0.4780
+  step 1000/2807  loss=0.7605  auxLoss=1.5323  sentLoss=0.5840  capPenalty=0.0000  entropy=0.9724  running_acc=0.4852
+  step 1200/2807  loss=1.9204  auxLoss=2.6095  sentLoss=0.5397  capPenalty=0.0000  entropy=1.0019  running_acc=0.4886
+  step 1400/2807  loss=0.8801  auxLoss=1.8936  sentLoss=0.5423  capPenalty=0.0000  entropy=1.0178  running_acc=0.4855
+  step 1600/2807  loss=0.2535  auxLoss=0.5267  sentLoss=0.5239  capPenalty=0.0000  entropy=1.0790  running_acc=0.4839
+  step 1800/2807  loss=0.6579  auxLoss=1.4043  sentLoss=0.5661  capPenalty=0.0000  entropy=1.0436  running_acc=0.4801
+  step 2000/2807  loss=0.6261  auxLoss=1.4398  sentLoss=0.4997  capPenalty=0.0000  entropy=1.0672  running_acc=0.4793
+  step 2200/2807  loss=1.3083  auxLoss=1.5499  sentLoss=0.5063  capPenalty=0.0000  entropy=1.0636  running_acc=0.4773
+  step 2400/2807  loss=1.0637  auxLoss=1.5565  sentLoss=0.6706  capPenalty=0.0000  entropy=1.0897  running_acc=0.4810
+  step 2600/2807  loss=0.4134  auxLoss=1.2527  sentLoss=0.6369  capPenalty=0.0000  entropy=1.0741  running_acc=0.4801
+  step 2800/2807  loss=1.1829  auxLoss=2.0116  sentLoss=0.6541  capPenalty=0.0000  entropy=1.0380  running_acc=0.4780
+train: loss=0.8648 acc=0.4788 macroF1=0.0988 weightedF1=0.3220 weightEntropy=1.0584/1.0986
+train aux accuracy: text=0.5031, audio=0.4848, video=0.4792  sentiment_accuracy=0.9778
+val:   loss=0.8934 acc=0.4496 macroF1=0.0886 weightedF1=0.2788  sentiment_accuracy=0.9689  (69s)
+  no improvement (6/6)
+
+Early stopping triggered.
+
+======================================================================
+TRAINING COMPLETE (8.1 min)
+Best epoch: 1   Best val weighted F1: 0.2788
+Checkpoint: /kaggle/temp/repo_mceiu/models/ft_mceiu_crct_s42.pt
+======================================================================
+
+Final validation class-wise report:
+              precision    recall  f1-score   support
+
+     neutral     0.4496    1.0000    0.6203      2152
+    surprise     0.0000    0.0000    0.0000       173
+        fear     0.0000    0.0000    0.0000       150
+     sadness     0.0000    0.0000    0.0000       298
+         joy     0.0000    0.0000    0.0000      1441
+     disgust     0.0000    0.0000    0.0000       114
+       anger     0.0000    0.0000    0.0000       459
+
+    accuracy                         0.4496      4787
+   macro avg     0.0642    0.1429    0.0886      4787
+weighted avg     0.2021    0.4496    0.2788      4787
+

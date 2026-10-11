@@ -1,0 +1,27 @@
+
+======================================================================
+VAL TRI-MODAL DATASET
+======================================================================
+VAL dialogues: 400
+VAL usable utterances: 4787
+VAL feature vectors before alignment: 4787
+VAL dialogues requiring feature truncation: 0
+VAL dialogues with insufficient features: 0
+VAL missing visual utterances: 0
+VAL visual features loaded: 4787
+VAL visual feature dimension: 512
+======================================================================
+
+======================================================================
+TEST TRI-MODAL DATASET
+======================================================================
+TEST dialogues: 806
+TEST usable utterances: 8910
+TEST feature vectors before alignment: 8910
+TEST dialogues requiring feature truncation: 0
+TEST dialogues with insufficient features: 0
+TEST missing visual utterances: 0
+TEST visual features loaded: 8910
+TEST visual feature dimension: 512
+======================================================================
+Saved /kaggle/temp/repo_mceiu/logs/prob_cache/mceiu_base_s1.pt: val (4787, 7), test (8910, 7)

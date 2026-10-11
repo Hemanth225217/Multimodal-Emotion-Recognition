@@ -1,0 +1,149 @@
+{
+ "repo_commit": "d2a69bbe6642af4264b0ff689861c510c3e57345",
+ "mceiu_coverage": {
+  "train": {
+   "utterances": 31312,
+   "audio": 31312,
+   "video": 31312
+  },
+  "dev": {
+   "utterances": 4787,
+   "audio": 4787,
+   "video": 4787
+  },
+  "test": {
+   "utterances": 8910,
+   "audio": 8910,
+   "video": 8910
+  }
+ },
+ "runs": [
+  {
+   "name": "mceiu_base_s42",
+   "job": "mceiu_base",
+   "data": "mceiu",
+   "seed": 42,
+   "ctx_dropout": 0.0,
+   "crct": 0.0,
+   "epoch": 20,
+   "val_accuracy": 0.46271151034050556,
+   "val_weighted_f1": 0.44690987971733037,
+   "val_macro_f1": 0.22696878929864184,
+   "status": "ok",
+   "minutes": 29.8
+  },
+  {
+   "name": "mceiu_ctx_s42",
+   "job": "mceiu_ctx",
+   "data": "mceiu",
+   "seed": 42,
+   "ctx_dropout": 0.15,
+   "crct": 0.0,
+   "epoch": 20,
+   "val_accuracy": 0.48151242949655315,
+   "val_weighted_f1": 0.46357776229665704,
+   "val_macro_f1": 0.2388599018028505,
+   "status": "ok",
+   "minutes": 29.1
+  },
+  {
+   "name": "mceiu_crct_s42",
+   "job": "mceiu_crct",
+   "data": "mceiu",
+   "seed": 42,
+   "ctx_dropout": 0.0,
+   "crct": 0.25,
+   "epoch": 1,
+   "val_accuracy": 0.4495508669312722,
+   "val_weighted_f1": 0.2788394482306089,
+   "val_macro_f1": 0.08860889794741934,
+   "status": "ok",
+   "minutes": 8.6
+  },
+  {
+   "name": "mceiu_base_s1",
+   "job": "mceiu_base",
+   "data": "mceiu",
+   "seed": 1,
+   "ctx_dropout": 0.0,
+   "crct": 0.0,
+   "epoch": 19,
+   "val_accuracy": 0.48360142051389177,
+   "val_weighted_f1": 0.45615648368182293,
+   "val_macro_f1": 0.23975190176229016,
+   "status": "ok",
+   "minutes": 29.4
+  },
+  {
+   "name": "mceiu_ctx_s1",
+   "job": "mceiu_ctx",
+   "data": "mceiu",
+   "seed": 1,
+   "ctx_dropout": 0.15,
+   "crct": 0.0,
+   "epoch": 1,
+   "val_accuracy": 0.4495508669312722,
+   "val_weighted_f1": 0.2788394482306089,
+   "val_macro_f1": 0.08860889794741934,
+   "status": "ok",
+   "minutes": 8.5
+  },
+  {
+   "name": "mceiu_crct_s1",
+   "job": "mceiu_crct",
+   "data": "mceiu",
+   "seed": 1,
+   "ctx_dropout": 0.0,
+   "crct": 0.25,
+   "epoch": 1,
+   "val_accuracy": 0.4495508669312722,
+   "val_weighted_f1": 0.2788394482306089,
+   "val_macro_f1": 0.08860889794741934,
+   "status": "ok",
+   "minutes": 8.7
+  },
+  {
+   "name": "mceiu_base_s2",
+   "job": "mceiu_base",
+   "data": "mceiu",
+   "seed": 2,
+   "ctx_dropout": 0.0,
+   "crct": 0.0,
+   "epoch": 25,
+   "val_accuracy": 0.4767077501566743,
+   "val_weighted_f1": 0.45797051983848935,
+   "val_macro_f1": 0.24958982946273064,
+   "status": "ok",
+   "minutes": 29.0
+  },
+  {
+   "name": "mceiu_ctx_s2",
+   "job": "mceiu_ctx",
+   "data": "mceiu",
+   "seed": 2,
+   "ctx_dropout": 0.15,
+   "crct": 0.0,
+   "epoch": 21,
+   "val_accuracy": 0.5049091288907458,
+   "val_weighted_f1": 0.4703528158700931,
+   "val_macro_f1": 0.21542598837993773,
+   "status": "ok",
+   "minutes": 29.0
+  },
+  {
+   "name": "mceiu_crct_s2",
+   "job": "mceiu_crct",
+   "data": "mceiu",
+   "seed": 2,
+   "ctx_dropout": 0.0,
+   "crct": 0.25,
+   "epoch": 1,
+   "val_accuracy": 0.4495508669312722,
+   "val_weighted_f1": 0.2788394482306089,
+   "val_macro_f1": 0.08860889794741934,
+   "status": "ok",
+   "minutes": 8.5
+  }
+ ],
+ "total_minutes": 182.9
+}

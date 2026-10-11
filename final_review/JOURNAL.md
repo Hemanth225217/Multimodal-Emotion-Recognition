@@ -206,3 +206,15 @@
   **Reading:** (1) with informative face features the target's own video is used (diagnosis confirmed); (2) the
   neighbours' faces still contribute almost nothing; (3) CRCT helps once the visual input is informative: best
   validation result so far and a less text-dominated fusion. Validation only; test scored once on 13 Oct.
+
+## 2026-10-12
+
+- **MC-EIU training** (`mceiu-train`, commit d2a69bb, 183 min; validation, our split): mceiu_base wF1 44.69 / 45.62 /
+  45.80 (seeds 42 / 1 / 2), mean 45.37 (SD 0.59), acc 47.43, mF1 23.88; mceiu_ctx 46.36 / failed / 47.04;
+  mceiu_crct failed x 3. "Failed" = best epoch 1 with acc 44.96 / wF1 27.88 / mF1 8.86, i.e. every utterance predicted
+  neutral. Every MC-EIU run sits on this all-neutral plateau first; the healthy runs left it at epoch 6 or 7, exactly at
+  the edge of the early-stopping patience (6), the failed ones a little later. Not a property of CRCT.
+  **Fix (decided after seeing this, reported as such):** `TRAIN_MIN_EPOCHS=12` (no early stop before epoch 12). The five
+  healthy runs trained all 25 epochs and are unaffected (GPU training is deterministic per seed); only the four failed
+  runs are rerun (`mceiu-train-rerun`, then `mceiu-rerun-analysis`). Commit 9966a81, pushed.
+- Windows Application Control now blocks venv\Scripts\kaggle.exe; the Kaggle CLI is run through the Python package.
