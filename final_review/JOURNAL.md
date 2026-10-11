@@ -186,3 +186,11 @@
   **Reading:** CRCT did NOT make context voice/face matter (its intended goal; negative result) and costs -0.43 val wF1;
   as a side effect it made every seed strongly and consistently dependent on the context's WORDS. The face channel
   cannot matter with these video features (ResNet-18 ImageNet, no face detection): the video-only prediction is constant.
+- **MC-EIU extraction complete:** A1 (zip 1) 12,000 / 12,000 clips with audio and video (4.7 h). `mc-eiu-merge`: 45,009
+  utterances, no clip missing, audio and video for all; split train 31,312 / dev 4,787 / test 8,910 utterances.
+  `mceiu-train` launched 22:05 (base / context dropout / CRCT x 3 seeds); its analysis (`meld-mceiu-analysis`) follows.
+- **Face-expression features for MELD** (`meld-face-extract`, 4.2 h): MTCNN largest face per frame + ViT FER model
+  (trpakov/vit-face-expression; classes angry, disgust, fear, happy, neutral, sad, surprise), 775-D. Faces found for
+  99.6-99.8 % of utterances (train 9,965 / 9,988, dev 1,104 / 1,108, test 2,604 / 2,610); most clips have a face in all
+  8 frames. Self-test 32 / 32. `meld-face-train` (meld_face, meld_face_crct x 3 seeds) running; analysis follows.
+- The session's automatic launches were paused from about 08:30 to 22:00 (laptop asleep); GPU used 20.6 / 30 h.
