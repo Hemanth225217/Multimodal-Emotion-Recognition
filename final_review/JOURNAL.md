@@ -170,3 +170,9 @@
   reference; refuses a second test scoring per dataset (tested on fake data). Dry run on validation with the 12 MELD
   families available today (`final_candidates_DRAFT.json`): greedy picks H3c, DBc, L1_wavlm_l22, H3 -> validation
   69.13 / 66.94 / 50.62; all-family average 66.61 / 64.29 / 47.83. Test not scored.
+- **MELD context dropout and CRCT** (`meld-train-ctx-crct`, commit 495a898, 51 min on the T4). Validation, best epoch,
+  seeds 42 / 1 / 2: context dropout 0.15 wF1 57.25 / 59.20 / 58.96, mean 58.47 (SD 1.06), acc 59.24, mF1 44.10;
+  CRCT 0.25 wF1 57.24 / 58.14 / 56.98, mean 57.45 (SD 0.61), acc 58.15, mF1 43.28; same-script control (L1) 57.89
+  (SD 0.42). Difference to control: context dropout +0.58 (just above the +0.5 Gate-1 rule, but within one SD of the
+  seed spread), CRCT -0.43 (no accuracy gain). CRCT's purpose is to make context voice/face matter; judged by the
+  context attribution (kernel `meld-ctx-crct-analysis`, launched). Results: `final_review/results/meld_ctx_crct/`.

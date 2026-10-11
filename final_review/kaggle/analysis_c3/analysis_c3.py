@@ -51,10 +51,11 @@ def main():
         t = repos["meld"] / rel
         t.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(sorted(meld_dir.rglob(name))[0], t)
-    extract_dir = sorted(INPUT_ROOT.rglob("utterances.csv"))[0].parent
     audio = Path("/kaggle/temp/mceiu_audio_l22.pkl")
-    r = sh(f"python -u final_review/tools/mceiu_to_meld_layout.py {extract_dir} . {audio} --layers 22", cwd=repos["mceiu"])
-    print(r.stdout[-1500:], r.stderr[-1500:], flush=True)
+    found = sorted(INPUT_ROOT.rglob("utterances.csv"))
+    if found:  # MC-EIU inputs are only needed when MC-EIU checkpoints are mounted
+        r = sh(f"python -u final_review/tools/mceiu_to_meld_layout.py {found[0].parent} . {audio} --layers 22", cwd=repos["mceiu"])
+        print(r.stdout[-1500:], r.stderr[-1500:], flush=True)
 
     ckpts = sorted(p for p in INPUT_ROOT.rglob("*.pt") if p.parent.name == "checkpoints"
                    and p.stem.startswith(("meld_ctx_", "meld_crct_", "mceiu_base_", "mceiu_ctx_", "mceiu_crct_")))

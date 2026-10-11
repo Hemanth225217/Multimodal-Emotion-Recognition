@@ -1,0 +1,91 @@
+{
+ "repo_commit": "495a89884cc1f3d8db25b3cef5e19ab1ec716b9b",
+ "mceiu_coverage": null,
+ "runs": [
+  {
+   "name": "meld_ctx_s42",
+   "job": "meld_ctx",
+   "data": "meld",
+   "seed": 42,
+   "ctx_dropout": 0.15,
+   "crct": 0.0,
+   "epoch": 7,
+   "val_accuracy": 0.5785198555956679,
+   "val_weighted_f1": 0.572488319127953,
+   "val_macro_f1": 0.4075786458801861,
+   "status": "ok",
+   "minutes": 6.5
+  },
+  {
+   "name": "meld_crct_s42",
+   "job": "meld_crct",
+   "data": "meld",
+   "seed": 42,
+   "ctx_dropout": 0.0,
+   "crct": 0.25,
+   "epoch": 19,
+   "val_accuracy": 0.5767148014440433,
+   "val_weighted_f1": 0.5723946418181668,
+   "val_macro_f1": 0.4439608593269227,
+   "status": "ok",
+   "minutes": 10.1
+  },
+  {
+   "name": "meld_ctx_s1",
+   "job": "meld_ctx",
+   "data": "meld",
+   "seed": 1,
+   "ctx_dropout": 0.15,
+   "crct": 0.0,
+   "epoch": 14,
+   "val_accuracy": 0.6037906137184116,
+   "val_weighted_f1": 0.5919566128747138,
+   "val_macro_f1": 0.4655603765309415,
+   "status": "ok",
+   "minutes": 8.3
+  },
+  {
+   "name": "meld_crct_s1",
+   "job": "meld_crct",
+   "data": "meld",
+   "seed": 1,
+   "ctx_dropout": 0.0,
+   "crct": 0.25,
+   "epoch": 16,
+   "val_accuracy": 0.5893501805054152,
+   "val_weighted_f1": 0.5813769500339208,
+   "val_macro_f1": 0.4237716741522874,
+   "status": "ok",
+   "minutes": 9.0
+  },
+  {
+   "name": "meld_ctx_s2",
+   "job": "meld_ctx",
+   "data": "meld",
+   "seed": 2,
+   "ctx_dropout": 0.15,
+   "crct": 0.0,
+   "epoch": 11,
+   "val_accuracy": 0.5947653429602888,
+   "val_weighted_f1": 0.5896294502018616,
+   "val_macro_f1": 0.4498584747708974,
+   "status": "ok",
+   "minutes": 7.1
+  },
+  {
+   "name": "meld_crct_s2",
+   "job": "meld_crct",
+   "data": "meld",
+   "seed": 2,
+   "ctx_dropout": 0.0,
+   "crct": 0.25,
+   "epoch": 17,
+   "val_accuracy": 0.5785198555956679,
+   "val_weighted_f1": 0.5698010130290144,
+   "val_macro_f1": 0.43074387642991063,
+   "status": "ok",
+   "minutes": 9.3
+  }
+ ],
+ "total_minutes": 51.2
+}
