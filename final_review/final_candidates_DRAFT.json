@@ -1,0 +1,23 @@
+{
+ "note": "DRAFT for a validation-only dry run on 11 Oct; the real list is frozen on Tue 13 morning",
+ "commit": "DRAFT",
+ "datasets": {
+  "meld": {
+   "reference": {"name": "pre-final headline", "members": {
+     "D": ["logs/prob_cache/D_orig.pt"], "H3": ["logs/prob_cache/H3_large.pt"],
+     "H3c": ["logs/prob_cache/CTX_large_s42.pt", "logs/prob_cache/CTX_large_s1.pt"],
+     "H2c": ["logs/prob_cache/CTXb_s42.pt", "logs/prob_cache/CTXb_s1.pt"],
+     "DBc": ["logs/prob_cache/DEB_ctx_s42.pt", "logs/prob_cache/DEB_ctx_s1.pt"]}},
+   "families": {
+     "B": ["logs/prob_cache/B.pt"], "D": ["logs/prob_cache/D_orig.pt"], "F": ["logs/prob_cache/F_orig.pt"],
+     "H2fam": ["logs/prob_cache/H2_base.pt", "logs/prob_cache/H2b_s1.pt"], "H3": ["logs/prob_cache/H3_large.pt"],
+     "H3c": ["logs/prob_cache/CTX_large_s42.pt", "logs/prob_cache/CTX_large_s1.pt"],
+     "H2c": ["logs/prob_cache/CTXb_s42.pt", "logs/prob_cache/CTXb_s1.pt"], "H17": ["logs/prob_cache/H_run17_regen.pt"],
+     "DBc": ["logs/prob_cache/DEB_ctx_s42.pt", "logs/prob_cache/DEB_ctx_s1.pt"],
+     "L1_control": ["final_review/results/L1_fusion_audio/output/prob_cache/L1_control_s42.pt", "final_review/results/L1_fusion_audio/output/prob_cache/L1_control_s1.pt", "final_review/results/L1_fusion_audio/output/prob_cache/L1_control_s2.pt"],
+     "L1_wavlm_l22": ["final_review/results/L1_fusion_audio/output/prob_cache/L1_wavlm_l22_s42.pt", "final_review/results/L1_fusion_audio/output/prob_cache/L1_wavlm_l22_s1.pt", "final_review/results/L1_fusion_audio/output/prob_cache/L1_wavlm_l22_s2.pt"],
+     "L1_wavlm_mean": ["final_review/results/L1_fusion_audio/output/prob_cache/L1_wavlm_mean_s42.pt", "final_review/results/L1_fusion_audio/output/prob_cache/L1_wavlm_mean_s1.pt", "final_review/results/L1_fusion_audio/output/prob_cache/L1_wavlm_mean_s2.pt"]
+   }
+  }
+ }
+}

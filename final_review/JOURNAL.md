@@ -155,3 +155,18 @@
   (3) model B's "hiding same-speaker past helps" does not replicate (single-model artefact; claim dropped).
   Consequence: single-model context analyses (attention or ablation) can mislead; multi-seed intervals are needed.
   Results: `final_review/results/C3_L1/`.
+
+## 2026-10-11
+
+- **MC-EIU per-archive extraction:** A2 (zip 2) 18,000 / 18,000 clips with audio and video, 6.5 h; A3 (RAR) 15,009 /
+  15,009, 4.2 h; self-tests 64 / 64. A1 (zip 1) started by the user at about 06:45. A background chain in the session
+  launches mc-eiu-merge when A1 completes and then mceiu-train.
+- **MELD training launched** (`meld-train-ctx-crct`, about 06:40): meld_ctx (context dropout 0.15) and meld_crct
+  (channel-restricted context training 0.25) x seeds 42 / 1 / 2.
+- **Method decision (10 Oct, user):** add a method. Confidence-routed fusion was rejected as already published
+  (EmoEUS, ESED, ReH-FUSE, LDDU, COLD Fusion). Chosen: channel-restricted context training (CRCT), see train_final.py.
+- **Final scoring script** `final_review/analysis/final_scoring.py`: greedy forward selection on validation (stop below
+  +0.1 wF1), equal-weight family averages, test scored only with --score-test, bootstrap CIs, paired comparison with a
+  reference; refuses a second test scoring per dataset (tested on fake data). Dry run on validation with the 12 MELD
+  families available today (`final_candidates_DRAFT.json`): greedy picks H3c, DBc, L1_wavlm_l22, H3 -> validation
+  69.13 / 66.94 / 50.62; all-family average 66.61 / 64.29 / 47.83. Test not scored.
