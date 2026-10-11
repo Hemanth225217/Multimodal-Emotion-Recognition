@@ -1,0 +1,17 @@
+{
+  "id": "hemanths0411/meld-face-extract",
+  "title": "MELD Face Extract",
+  "code_file": "face_extract.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "keywords": ["gpu"],
+  "dataset_sources": ["zaber666/meld-dataset", "hemanths0411/meld-emotion-features"],
+  "kernel_sources": [],
+  "competition_sources": [],
+  "model_sources": [],
+  "machine_shape": "NvidiaTeslaT4"
+}

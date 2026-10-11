@@ -92,7 +92,7 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config import (
-    TEXT_DIM as _CONFIG_TEXT_DIM, AUDIO_DIM as _CONFIG_AUDIO_DIM, VIDEO_DIM, NUM_CLASSES, NUM_SPEAKER_SLOTS,
+    TEXT_DIM as _CONFIG_TEXT_DIM, AUDIO_DIM as _CONFIG_AUDIO_DIM, VIDEO_DIM as _CONFIG_VIDEO_DIM, NUM_CLASSES, NUM_SPEAKER_SLOTS,
     NUM_SENTIMENT_CLASSES, EMOTION_NAMES, FINAL_MODEL_PATH as _CONFIG_FINAL_MODEL_PATH, SEED as _CONFIG_SEED, DEVICE,
 )
 from training.dataset import MELDDataset
@@ -110,6 +110,8 @@ USE_LEGACY_AUDIO = os.environ.get("TRAIN_USE_LEGACY_AUDIO", "1") != "0"
 # TRAIN_AUDIO_DIM gives its dimension. Unset, behaviour is unchanged.
 AUDIO_DIM = int(os.environ.get("TRAIN_AUDIO_DIM", _CONFIG_AUDIO_DIM))
 AUDIO_PATH = os.environ.get("TRAIN_AUDIO_PATH")
+# Final-review face features: the visual pickles are replaced by face-expression features of another size; unset = 512.
+VIDEO_DIM = int(os.environ.get("TRAIN_VIDEO_DIM", _CONFIG_VIDEO_DIM))
 FINAL_MODEL_PATH = Path(os.environ.get("TRAIN_OUTPUT_PATH", str(_CONFIG_FINAL_MODEL_PATH)))
 # Training on the GPU is fully deterministic for a fixed seed (three retrains
 # of D and F came out bit-identical), so a genuinely different trained
