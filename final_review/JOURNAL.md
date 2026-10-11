@@ -218,3 +218,15 @@
   healthy runs trained all 25 epochs and are unaffected (GPU training is deterministic per seed); only the four failed
   runs are rerun (`mceiu-train-rerun`, then `mceiu-rerun-analysis`). Commit 9966a81, pushed.
 - Windows Application Control now blocks venv\Scripts\kaggle.exe; the Kaggle CLI is run through the Python package.
+- **Context attribution + audit, MC-EIU vs MELD** (`meld-mceiu-analysis`, CPU, validation; MC-EIU base seeds 42/1/2 vs
+  MELD L1 control seeds). Change in accuracy when hiding (MELD / MC-EIU, mean of 3 seeds):
+  all context, all channels +0.45 / -1.73 (MC-EIU: all seeds negative, 40 % of predictions flip);
+  other speaker's earlier words -0.27 / -1.62 (MC-EIU: interval excludes 0 in all 3 seeds);
+  same speaker's earlier utterances, all channels -0.26 / -1.67; all-context FACES +0.03 / -1.00 (2 of 3 significant);
+  all-context VOICES -0.64 / -0.74. Audit MELD / MC-EIU: text largest weight 99 / 75 %; video-only branch neutral
+  share 1.00 / 0.74; accuracy added by video +0.15 / +1.10, by audio +1.59 / +1.44; text-only 56.7 / 45.2 vs all
+  58.4 / 47.4. Context-dropout MC-EIU models (2 healthy seeds): text largest weight only 21 %, val acc 48.15 / 50.49.
+  **Reading:** on MC-EIU (dyadic) the model uses its context, notably the partner's earlier words, and even some
+  non-verbal context; on MELD it does not. Confounds to state: different shows and camera framing (the ResNet video
+  carries signal on MC-EIU), WavLM vs openSMILE audio, dataset size. Claim "differs between the datasets", not "caused by
+  dyadic structure". The failed (plateau) MC-EIU runs in this analysis are superseded by the rerun.
