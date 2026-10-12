@@ -29,6 +29,48 @@ per-utterance softmax weight for text/audio/video, so (for example) a flat
 toward audio/video rather than text. A second research thread analyzes how
 often the three modalities *disagree* with each other and how that affects
 the fusion model's confidence and correctness (`evaluation/disagreement_analysis.py`).
+(The final-review audit below shows that in practice these weights are almost constant and favour text.)
+
+## Final review (October 2026): results and what changed
+
+This branch (`final-review`) adds a second phase on top of the pre-final system (tag `pre-final-review`). Every
+experiment, decision and failure is logged in [`final_review/JOURNAL.md`](final_review/JOURNAL.md).
+
+**MELD test set, every evaluation of the final phase** (all selections made on validation only; each candidate list
+was committed before its test scoring; dialogue-level bootstrap 95% intervals):
+
+| Test look | Selection | Accuracy | Weighted F1 | Macro F1 |
+|---|---|---|---|---|
+| pre-final | equal-weight ensemble of 5 families | 67.89 | 66.30 | 46.00 |
+| 1 (protocol) | greedy selection for weighted F1, 4 families | 67.59 | 65.97 | 45.37 |
+| 2 (disclosed) | as 1, two more DeBERTa seeds among the candidates | 67.09 | 65.49 | 46.54 |
+| **3 (disclosed, headline)** | **stacking (logistic regression) of 17 families, chosen by cross-validation inside validation for accuracy** | **68.35** [66.33, 70.41] | **66.84** [64.65, 69.06] | **47.61** |
+
+The headline is comparable to the base paper AMB-DSGDN (66.07 / 66.18); the gain over the pre-final ensemble
+(+0.45 accuracy, interval -0.56 to +1.43) is not significant, and because the test set was scored three times the best
+look is slightly optimistic (cross-validated estimate on validation: 67.46%). Records:
+`final_review/results/final_scoring/TEST_SCORED_meld*.json`; `final_review/tools/export_stacked_predictions.py`
+re-derives the headline predictions and checks them against the record.
+
+**Findings (validation unless stated; 3 seeds per recipe):**
+
+- *Modality-use audit* (`final_review/analysis/modality_audit.py`): text has the largest fusion weight for every
+  validation utterance of model B, and the original video branch alone predicts "neutral" for every utterance.
+- *Audio repair failed*: WavLM-large audio is about 10 points better on its own but lowered fused weighted F1
+  (-0.43 / -1.21); the fusion gave it less weight and followed the text more often (84.6% -> 93.9%).
+- *Context attribution* (`final_review/analysis/context_attribution.py`): hiding the context's voices or faces changes
+  accuracy by about zero in all 7 MELD models; reliance on the context's words is seed-dependent (-5.1 points for
+  model B, none for the control seeds).
+- *Face-expression video* (MTCNN + ViT expression model, 775-D) makes video useful (+1.2 points of accuracy added by
+  video); with channel-restricted context training (CRCT) it gives the best validation fusion result (+1.58 weighted F1
+  over the control). On test the face models gain about 1.3 points of accuracy but not weighted F1. CRCT alone did not
+  make non-verbal context matter (negative result).
+- *Second dataset, MC-EIU (English, two-person dialogue; our own seeded split, so not comparable with published
+  numbers)*: the model does use its context there (hiding it: -1.73 points; the partner's earlier words matter most).
+  Test: 52.13% accuracy / 48.74% weighted F1; context dropout adds +0.80 weighted F1 [+0.23, +1.38].
+
+**Demo:** the web demo now shows a conversation view, the stored prediction of the final stacked model per line, and a
+live context-attribution heat map for the selected line; open `http://127.0.0.1:8000/#results` for the results tab.
 
 ## Honesty notes (please read before citing numbers from this repo)
 
