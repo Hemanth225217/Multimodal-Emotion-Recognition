@@ -1,0 +1,111 @@
+{
+ "note": "Candidate list v3 for the THIRD, disclosed MELD test look (selection target: accuracy, decided by the user on 12 Oct before any result). 17 families = v2 + H3c_face. Freeze = commit of this file with 'commit' filled.",
+ "commit": "TO FILL AT FREEZE",
+ "datasets": {
+  "meld": {
+   "reference": {
+    "name": "pre-final headline",
+    "members": {
+     "D": [
+      "logs/prob_cache/D_orig.pt"
+     ],
+     "H3": [
+      "logs/prob_cache/H3_large.pt"
+     ],
+     "H3c": [
+      "logs/prob_cache/CTX_large_s42.pt",
+      "logs/prob_cache/CTX_large_s1.pt"
+     ],
+     "H2c": [
+      "logs/prob_cache/CTXb_s42.pt",
+      "logs/prob_cache/CTXb_s1.pt"
+     ],
+     "DBc": [
+      "logs/prob_cache/DEB_ctx_s42.pt",
+      "logs/prob_cache/DEB_ctx_s1.pt"
+     ]
+    }
+   },
+   "families": {
+    "B": [
+     "logs/prob_cache/B.pt"
+    ],
+    "D": [
+     "logs/prob_cache/D_orig.pt"
+    ],
+    "F": [
+     "logs/prob_cache/F_orig.pt"
+    ],
+    "H2fam": [
+     "logs/prob_cache/H2_base.pt",
+     "logs/prob_cache/H2b_s1.pt"
+    ],
+    "H3": [
+     "logs/prob_cache/H3_large.pt"
+    ],
+    "H3c": [
+     "logs/prob_cache/CTX_large_s42.pt",
+     "logs/prob_cache/CTX_large_s1.pt"
+    ],
+    "H2c": [
+     "logs/prob_cache/CTXb_s42.pt",
+     "logs/prob_cache/CTXb_s1.pt"
+    ],
+    "H17": [
+     "logs/prob_cache/H_run17_regen.pt"
+    ],
+    "DBc": [
+     "logs/prob_cache/DEB_ctx_s42.pt",
+     "logs/prob_cache/DEB_ctx_s1.pt",
+     "final_review/results/deb_extra/DEB_ctx_s2.pt",
+     "final_review/results/deb_extra/DEB_ctx_s3.pt"
+    ],
+    "control": [
+     "final_review/results/L1_fusion_audio/output/prob_cache/L1_control_s42.pt",
+     "final_review/results/L1_fusion_audio/output/prob_cache/L1_control_s1.pt",
+     "final_review/results/L1_fusion_audio/output/prob_cache/L1_control_s2.pt"
+    ],
+    "wavlm_l22": [
+     "final_review/results/L1_fusion_audio/output/prob_cache/L1_wavlm_l22_s42.pt",
+     "final_review/results/L1_fusion_audio/output/prob_cache/L1_wavlm_l22_s1.pt",
+     "final_review/results/L1_fusion_audio/output/prob_cache/L1_wavlm_l22_s2.pt"
+    ],
+    "wavlm_mean": [
+     "final_review/results/L1_fusion_audio/output/prob_cache/L1_wavlm_mean_s42.pt",
+     "final_review/results/L1_fusion_audio/output/prob_cache/L1_wavlm_mean_s1.pt",
+     "final_review/results/L1_fusion_audio/output/prob_cache/L1_wavlm_mean_s2.pt"
+    ],
+    "ctx_dropout": [
+     "final_review/results/meld_ctx_crct/output/prob_cache/meld_ctx_s42.pt",
+     "final_review/results/meld_ctx_crct/output/prob_cache/meld_ctx_s1.pt",
+     "final_review/results/meld_ctx_crct/output/prob_cache/meld_ctx_s2.pt"
+    ],
+    "crct": [
+     "final_review/results/meld_ctx_crct/output/prob_cache/meld_crct_s42.pt",
+     "final_review/results/meld_ctx_crct/output/prob_cache/meld_crct_s1.pt",
+     "final_review/results/meld_ctx_crct/output/prob_cache/meld_crct_s2.pt"
+    ],
+    "face": [
+     "final_review/results/meld_face_train/output/prob_cache/meld_face_s42.pt",
+     "final_review/results/meld_face_train/output/prob_cache/meld_face_s1.pt",
+     "final_review/results/meld_face_train/output/prob_cache/meld_face_s2.pt"
+    ],
+    "face_crct": [
+     "final_review/results/meld_face_train/output/prob_cache/meld_face_crct_s42.pt",
+     "final_review/results/meld_face_train/output/prob_cache/meld_face_crct_s1.pt",
+     "final_review/results/meld_face_train/output/prob_cache/meld_face_crct_s2.pt"
+    ],
+    "H3c_face": [
+     "final_review/results/h3c_face/output/prob_cache/H3c_face_s42.pt"
+    ]
+   }
+  }
+ },
+ "procedure": {
+  "name": "stacking (M3): multinomial logistic regression on concatenated family log-probabilities",
+  "C": 0.01,
+  "chosen_by": "5-fold x 3 dialogue-level cross-validation inside validation, target accuracy",
+  "cv_accuracy": 67.46,
+  "cv_weighted_f1": 65.88
+ }
+}

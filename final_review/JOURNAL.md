@@ -268,3 +268,11 @@
   (M2) M1 + one class-prior exponent tau fitted on the training folds; (M3) logistic-regression stacking of the family
   log-probabilities. The procedure with the best mean cross-validated accuracy is refitted on the full validation set and
   scored on test once.
+- **H3c_face** (`meld-h3c-face`: RoBERTa-large + context 2/1 + face-expression video, seed 42; 51 min): best val wF1
+  63.76. GPU left 0.45 h (no more training this week).
+- **Cross-validated accuracy selection** with 17 families (v2 + H3c_face), 5 dialogue folds x 3 inside validation:
+  M1 greedy 67.12, M2 greedy + tau 67.04, **M3 stacking 67.46** (CV wF1 65.88) -> M3 chosen (rule pre-registered).
+  Fitted on full validation: C = 0.01 (in-sample val 72.29 / 70.63 / 55.07, optimistic by construction).
+  Prepared for the third, disclosed MELD test look: `final_review/final_candidates_v3_third_look.json` and
+  `final_review/analysis/final_scoring_stacking.py` (refuses a repeat). Honest expectation from the CV: about
+  67-68 % test accuracy.
