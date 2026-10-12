@@ -66,6 +66,8 @@ from training.train_final import (
 import os
 # Final-review audio features (legacy-layout pickle, see modules/data_loader.py); unset = the original 300-D features.
 AUDIO_DIM = int(os.environ.get("TRAIN_AUDIO_DIM", AUDIO_DIM))
+# Final-review face features (visual pickles replaced by 775-D face-expression features); unset = 512.
+VIDEO_DIM = int(os.environ.get("TRAIN_VIDEO_DIM", VIDEO_DIM))
 AUDIO_PATH = os.environ.get("TRAIN_AUDIO_PATH")
 FREEZE_LAYERS_OVERRIDE = os.environ.get("TRAIN_FREEZE_LAYERS")
 OUTPUT_PATH_OVERRIDE = os.environ.get("TRAIN_OUTPUT_PATH")

@@ -1,0 +1,16 @@
+{
+  "id": "hemanths0411/meld-h3c-face",
+  "title": "MELD H3c Face",
+  "code_file": "h3c_face.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "keywords": ["gpu"],
+  "dataset_sources": ["hemanths0411/meld-emotion-features"],
+  "kernel_sources": ["hemanths0411/meld-face-extract"],
+  "competition_sources": [],
+  "model_sources": []
+}
