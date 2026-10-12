@@ -230,3 +230,9 @@
   non-verbal context; on MELD it does not. Confounds to state: different shows and camera framing (the ResNet video
   carries signal on MC-EIU), WavLM vs openSMILE audio, dataset size. Claim "differs between the datasets", not "caused by
   dyadic structure". The failed (plateau) MC-EIU runs in this analysis are superseded by the rerun.
+- **MC-EIU rerun** (`mceiu-train-rerun`, TRAIN_MIN_EPOCHS=12, commit 9966a81): mceiu_ctx_s1 wF1 45.28 (healthy now);
+  mceiu_crct s42 44.43, s1 30.78 (best epoch 10, still not trained properly), s2 46.28. Final MC-EIU validation (seeds
+  42 / 1 / 2): base 45.37 (SD 0.59); context dropout 46.36 / 45.28 / 47.04, mean 46.22 (+0.86 vs base); CRCT 44.43 /
+  30.78 / 46.28, mean 40.50 (unstable: one seed fails to leave the plateau; the other two are at the base level).
+  Context dropout gives a small gain on both datasets (MELD +0.58, MC-EIU +0.86); CRCT helps only with informative
+  face features on MELD. `mceiu-rerun-analysis` launched.

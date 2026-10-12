@@ -1,0 +1,79 @@
+{
+ "repo_commit": "9966a81f6ffc7247fad30bfbc36161b8bd29790a",
+ "mceiu_coverage": {
+  "train": {
+   "utterances": 31312,
+   "audio": 31312,
+   "video": 31312
+  },
+  "dev": {
+   "utterances": 4787,
+   "audio": 4787,
+   "video": 4787
+  },
+  "test": {
+   "utterances": 8910,
+   "audio": 8910,
+   "video": 8910
+  }
+ },
+ "runs": [
+  {
+   "name": "mceiu_crct_s42",
+   "job": "mceiu_crct",
+   "data": "mceiu",
+   "seed": 42,
+   "ctx_dropout": 0.0,
+   "crct": 0.25,
+   "epoch": 16,
+   "val_accuracy": 0.490912889074577,
+   "val_weighted_f1": 0.4442631996661301,
+   "val_macro_f1": 0.20937705343123256,
+   "status": "ok",
+   "minutes": 26.7
+  },
+  {
+   "name": "mceiu_ctx_s1",
+   "job": "mceiu_ctx",
+   "data": "mceiu",
+   "seed": 1,
+   "ctx_dropout": 0.15,
+   "crct": 0.0,
+   "epoch": 22,
+   "val_accuracy": 0.4952997702109881,
+   "val_weighted_f1": 0.4527611415871376,
+   "val_macro_f1": 0.21404173800811346,
+   "status": "ok",
+   "minutes": 28.2
+  },
+  {
+   "name": "mceiu_crct_s1",
+   "job": "mceiu_crct",
+   "data": "mceiu",
+   "seed": 1,
+   "ctx_dropout": 0.0,
+   "crct": 0.25,
+   "epoch": 10,
+   "val_accuracy": 0.4462084813035304,
+   "val_weighted_f1": 0.30775264661160767,
+   "val_macro_f1": 0.13662589751647206,
+   "status": "ok",
+   "minutes": 18.9
+  },
+  {
+   "name": "mceiu_crct_s2",
+   "job": "mceiu_crct",
+   "data": "mceiu",
+   "seed": 2,
+   "ctx_dropout": 0.0,
+   "crct": 0.25,
+   "epoch": 25,
+   "val_accuracy": 0.4785878420722791,
+   "val_weighted_f1": 0.46283436476238143,
+   "val_macro_f1": 0.24354021634495884,
+   "status": "ok",
+   "minutes": 30.0
+  }
+ ],
+ "total_minutes": 105.6
+}
