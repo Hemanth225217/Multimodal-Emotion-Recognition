@@ -1,6 +1,6 @@
 {
  "note": "Candidate list v3 for the THIRD, disclosed MELD test look (selection target: accuracy, decided by the user on 12 Oct before any result). 17 families = v2 + H3c_face. Freeze = commit of this file with 'commit' filled.",
- "commit": "TO FILL AT FREEZE",
+ "commit": "91c8402",
  "datasets": {
   "meld": {
    "reference": {
