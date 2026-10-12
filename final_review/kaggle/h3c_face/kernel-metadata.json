@@ -12,5 +12,6 @@
   "dataset_sources": ["hemanths0411/meld-emotion-features"],
   "kernel_sources": ["hemanths0411/meld-face-extract"],
   "competition_sources": [],
-  "model_sources": []
+  "model_sources": [],
+  "machine_shape": "NvidiaTeslaT4"
 }
