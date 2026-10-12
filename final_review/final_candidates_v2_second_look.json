@@ -1,6 +1,6 @@
 {
  "note": "Candidate list v2 (12 Oct 2026, written BEFORE the extra DeBERTa seeds finished): identical to the frozen list except that the DBc family has four seeds (42, 1, 2, 3); seeds 2 and 3 were trained after the first test scoring at the user's request. Its test scoring is a disclosed SECOND look at the MELD test set.",
- "commit": "TO FILL WHEN SCORED",
+ "commit": "055e7d1",
  "datasets": {
   "meld": {
    "reference": {

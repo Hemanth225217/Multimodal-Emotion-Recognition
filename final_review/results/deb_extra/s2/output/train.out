@@ -1,0 +1,115 @@
+======================================================================
+FINE-TUNING TRAINING RUN -- live microsoft/deberta-v3-large encoder, bottom 16 layers frozen
+Seed: 2   Dialogue context window: past=2 future=1 (max 192 tokens)
+Device: cuda   Text encoder: microsoft/deberta-v3-large (trainable)
+Text encoder LR: 2e-05   Rest-of-model LR: 0.0003
+======================================================================
+TRAIN FINE-TUNE DATASET: 1038 dialogues
+VAL FINE-TUNE DATASET: 114 dialogues
+
+Class distribution & training weights:
+  neutral   :  4709 (47.15%)  weight=0.500
+  surprise  :  1205 (12.06%)  weight=0.712
+  fear      :   268 ( 2.68%)  weight=1.736
+  sadness   :   684 ( 6.85%)  weight=0.992
+  joy       :  1743 (17.45%)  weight=0.592
+  disgust   :   271 ( 2.71%)  weight=1.726
+  anger     :  1108 (11.09%)  weight=0.742
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/390 [00:00<?, ?it/s]Loading weights: 100%|██████████| 390/390 [00:00<00:00, 11178.54it/s]
+[transformers] [1mDebertaV2Model LOAD REPORT[0m from: microsoft/deberta-v3-large
+Key                                     | Status     |  | 
+----------------------------------------+------------+--+-
+lm_predictions.lm_head.LayerNorm.weight | UNEXPECTED |  | 
+lm_predictions.lm_head.dense.weight     | UNEXPECTED |  | 
+lm_predictions.lm_head.dense.bias       | UNEXPECTED |  | 
+mask_predictions.LayerNorm.bias         | UNEXPECTED |  | 
+lm_predictions.lm_head.LayerNorm.bias   | UNEXPECTED |  | 
+mask_predictions.dense.bias             | UNEXPECTED |  | 
+mask_predictions.dense.weight           | UNEXPECTED |  | 
+lm_predictions.lm_head.bias             | UNEXPECTED |  | 
+mask_predictions.classifier.bias        | UNEXPECTED |  | 
+mask_predictions.LayerNorm.weight       | UNEXPECTED |  | 
+mask_predictions.classifier.weight      | UNEXPECTED |  | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+FinetuneTextEncoder: froze embeddings + bottom 16/24 layers (100,769,792/434,012,160 params trainable, 23.2%)
+
+Total trainable parameters (encoder + model): 108,499,234
+
+======================================================================
+EPOCH 1/10
+======================================================================
+train: loss=0.9579 acc=0.4847 macroF1=0.1725 weightedF1=0.3993
+val:   loss=0.9742 acc=0.5181 macroF1=0.2160 weightedF1=0.4067  (438s)
+  -> new best model saved to models/ft_deb_ctx21_s2.pt
+
+======================================================================
+EPOCH 2/10
+======================================================================
+train: loss=0.8626 acc=0.5568 macroF1=0.2578 weightedF1=0.4993
+val:   loss=0.8013 acc=0.5957 macroF1=0.3269 weightedF1=0.5355  (434s)
+  -> new best model saved to models/ft_deb_ctx21_s2.pt
+
+======================================================================
+EPOCH 3/10
+======================================================================
+train: loss=0.7948 acc=0.5917 macroF1=0.3155 weightedF1=0.5497
+val:   loss=0.7747 acc=0.6020 macroF1=0.3559 weightedF1=0.5591  (430s)
+  -> new best model saved to models/ft_deb_ctx21_s2.pt
+
+======================================================================
+EPOCH 4/10
+======================================================================
+train: loss=0.7383 acc=0.6147 macroF1=0.3614 weightedF1=0.5852
+val:   loss=0.7756 acc=0.6245 macroF1=0.4149 weightedF1=0.6106  (428s)
+  -> new best model saved to models/ft_deb_ctx21_s2.pt
+
+======================================================================
+EPOCH 5/10
+======================================================================
+train: loss=0.6917 acc=0.6377 macroF1=0.3947 weightedF1=0.6117
+val:   loss=0.7388 acc=0.6273 macroF1=0.4152 weightedF1=0.6122  (425s)
+  -> new best model saved to models/ft_deb_ctx21_s2.pt
+
+======================================================================
+EPOCH 6/10
+======================================================================
+train: loss=0.6742 acc=0.6566 macroF1=0.4150 weightedF1=0.6324
+val:   loss=0.8035 acc=0.6282 macroF1=0.4199 weightedF1=0.6105  (428s)
+  no improvement (1/6)
+
+======================================================================
+EPOCH 7/10
+======================================================================
+train: loss=0.6120 acc=0.6828 macroF1=0.4553 weightedF1=0.6625
+val:   loss=0.8445 acc=0.6182 macroF1=0.4292 weightedF1=0.6164  (426s)
+  -> new best model saved to models/ft_deb_ctx21_s2.pt
+
+======================================================================
+EPOCH 8/10
+======================================================================
+train: loss=0.5830 acc=0.6888 macroF1=0.4735 weightedF1=0.6693
+val:   loss=0.7666 acc=0.6236 macroF1=0.4263 weightedF1=0.6106  (422s)
+  no improvement (1/6)
+
+======================================================================
+EPOCH 9/10
+======================================================================
+train: loss=0.5811 acc=0.6999 macroF1=0.4810 weightedF1=0.6784
+val:   loss=0.9134 acc=0.6354 macroF1=0.4375 weightedF1=0.6139  (421s)
+  no improvement (2/6)
+
+======================================================================
+EPOCH 10/10
+======================================================================
+train: loss=0.5556 acc=0.7044 macroF1=0.5016 weightedF1=0.6865
+val:   loss=0.8659 acc=0.6462 macroF1=0.4410 weightedF1=0.6254  (416s)
+  -> new best model saved to models/ft_deb_ctx21_s2.pt
+
+======================================================================
+TRAINING COMPLETE (71.4 min)
+Best epoch: 10   Best val weighted F1: 0.6254
+Checkpoint: models/ft_deb_ctx21_s2.pt
+======================================================================
