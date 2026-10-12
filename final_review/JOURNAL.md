@@ -236,3 +236,15 @@
   30.78 / 46.28, mean 40.50 (unstable: one seed fails to leave the plateau; the other two are at the base level).
   Context dropout gives a small gain on both datasets (MELD +0.58, MC-EIU +0.86); CRCT helps only with informative
   face features on MELD. `mceiu-rerun-analysis` launched.
+- **FREEZE** (commit 54fcdd6): `final_review/final_candidates.json` (MELD 16 families, MC-EIU 3 families; code commit
+  899450d). **Single test scoring** (`final_scoring.py --score-test`, first and only look; TEST_SCORED_*.json):
+  MELD: greedy selection on validation = H3c, DBc, ctx_dropout, H3 (val 68.77 / 66.87 / 50.89). **Test 67.59 / 65.97 /
+  45.37** (acc / wF1 / mF1), 95 % CI wF1 [63.65, 68.28]; all-family average 66.70 / 64.99 / 46.88. Paired vs the
+  pre-final ensemble (67.89 / 66.30 / 46.00): wF1 -0.34 [-1.05, +0.33], accuracy -0.32 [-1.04, +0.34]: no measurable
+  difference. vs AMB-DSGDN (66.07 / 66.18): comparable.
+  MELD families on test (acc / wF1): control 63.03 / 62.24; ctx_dropout 62.87 / 61.75; crct 61.53 / 60.55; face 64.33 /
+  62.15; face_crct 64.25 / 62.24; wavlm_l22 62.38 / 61.16; wavlm_mean 62.49 / 61.48. The validation gains of context
+  dropout (+0.58) and face+CRCT (+1.58 wF1) do NOT carry over to test in weighted F1 (face models: about +1.3 accuracy).
+  MC-EIU: selection = ctx_dropout, base (val 51.18 / 47.76). **Test 52.13 / 48.74 / 23.68**, 95 % CI wF1 [46.39, 51.00];
+  vs MC-EIU base 50.83 / 47.94: wF1 +0.80 [+0.23, +1.38] (P > 0 = 0.997). Families: ctx_dropout 52.87 / 49.47, base
+  50.83 / 47.94, crct 52.14 / 46.43. Context dropout's gain replicates on the MC-EIU test set.

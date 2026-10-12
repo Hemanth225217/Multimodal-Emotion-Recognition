@@ -1,0 +1,113 @@
+{
+ "dataset": "mceiu",
+ "candidates_sha256": "51e2bf52c41b1092",
+ "commit": "899450d",
+ "selection_trace": [
+  {
+   "added": "ctx_dropout",
+   "val_weighted_f1": 0.47103124835141585
+  },
+  {
+   "added": "base",
+   "val_weighted_f1": 0.4775523560829419
+  }
+ ],
+ "selected": [
+  "ctx_dropout",
+  "base"
+ ],
+ "val": {
+  "base": {
+   "accuracy": 0.4965531648213913,
+   "weighted_f1": 0.4678917291897832,
+   "macro_f1": 0.25244145805677903
+  },
+  "ctx_dropout": {
+   "accuracy": 0.5080426154167537,
+   "weighted_f1": 0.47103124835141585,
+   "macro_f1": 0.23569985004669033
+  },
+  "crct": {
+   "accuracy": 0.48986839356590767,
+   "weighted_f1": 0.4326423338931952,
+   "macro_f1": 0.19647957543625666
+  }
+ },
+ "val_selected": {
+  "accuracy": 0.5118027992479632,
+  "weighted_f1": 0.4775523560829419,
+  "macro_f1": 0.2525427787591667
+ },
+ "val_all": {
+  "accuracy": 0.5138917902653019,
+  "weighted_f1": 0.4712420606782896,
+  "macro_f1": 0.23489687953660968
+ },
+ "test": {
+  "selected": {
+   "accuracy": 0.521324354657688,
+   "weighted_f1": 0.4874197313996121,
+   "macro_f1": 0.23676038230343752
+  },
+  "all_families": {
+   "accuracy": 0.5288439955106622,
+   "weighted_f1": 0.48720896394979657,
+   "macro_f1": 0.2317803608957846
+  },
+  "families": {
+   "base": {
+    "accuracy": 0.5083052749719417,
+    "weighted_f1": 0.4793786030560882,
+    "macro_f1": 0.2386921181877688
+   },
+   "ctx_dropout": {
+    "accuracy": 0.5287317620650954,
+    "weighted_f1": 0.4946704317938099,
+    "macro_f1": 0.2434402751828559
+   },
+   "crct": {
+    "accuracy": 0.5214365881032548,
+    "weighted_f1": 0.4643268859152354,
+    "macro_f1": 0.19820351779303483
+   }
+  },
+  "selected_ci95": {
+   "accuracy": [
+    0.499118876968714,
+    0.5426408689382585
+   ],
+   "weighted_f1": [
+    0.4638967464767645,
+    0.5099863056607886
+   ]
+  },
+  "reference": {
+   "name": "MC-EIU base model",
+   "metrics": {
+    "accuracy": 0.5083052749719417,
+    "weighted_f1": 0.4793786030560882,
+    "macro_f1": 0.2386921181877688
+   }
+  },
+  "selected_minus_reference": {
+   "accuracy": {
+    "mean": 0.012976239031936,
+    "ci95": [
+     0.007291169898672721,
+     0.018731801244291777
+    ],
+    "p_greater": 1.0
+   },
+   "weighted_f1": {
+    "mean": 0.007997355807926987,
+    "ci95": [
+     0.0023032654714076157,
+     0.013797730339733175
+    ],
+    "p_greater": 0.9965
+   }
+  }
+ },
+ "scored_at": "2026-10-12T15:10:04",
+ "second_look": false
+}
