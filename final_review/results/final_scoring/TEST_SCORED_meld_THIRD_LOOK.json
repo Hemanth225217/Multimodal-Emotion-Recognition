@@ -1,0 +1,54 @@
+{
+ "look": "third (disclosed)",
+ "procedure": {
+  "name": "stacking (M3): multinomial logistic regression on concatenated family log-probabilities",
+  "C": 0.01,
+  "chosen_by": "5-fold x 3 dialogue-level cross-validation inside validation, target accuracy",
+  "cv_accuracy": 67.46,
+  "cv_weighted_f1": 65.88
+ },
+ "commit": "91c8402",
+ "candidates_sha256": "20780171196489fa",
+ "scored_at": "2026-10-12T23:28:28",
+ "test": {
+  "accuracy": 0.6835249042145594,
+  "weighted_f1": 0.6683665294491863,
+  "macro_f1": 0.47610691317429055
+ },
+ "ci95": {
+  "accuracy": [
+   0.6633332931649475,
+   0.7040912751085863
+  ],
+  "weighted_f1": [
+   0.6465009957657952,
+   0.6905772009380071
+  ]
+ },
+ "reference": {
+  "name": "pre-final headline",
+  "metrics": {
+   "accuracy": 0.6789272030651341,
+   "weighted_f1": 0.6629840224868392,
+   "macro_f1": 0.46001342336022893
+  }
+ },
+ "minus_reference": {
+  "accuracy": {
+   "mean": 0.004492674806489055,
+   "ci95": [
+    -0.005626812602438122,
+    0.014346924346265279
+   ],
+   "p_greater": 0.8035
+  },
+  "weighted_f1": {
+   "mean": 0.005324117343707553,
+   "ci95": [
+    -0.005066435937207533,
+    0.015436055303540495
+   ],
+   "p_greater": 0.854
+  }
+ }
+}

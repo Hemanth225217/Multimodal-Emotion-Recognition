@@ -276,3 +276,9 @@
   Prepared for the third, disclosed MELD test look: `final_review/final_candidates_v3_third_look.json` and
   `final_review/analysis/final_scoring_stacking.py` (refuses a repeat). Honest expectation from the CV: about
   67-68 % test accuracy.
+- **THIRD, disclosed MELD test look** (frozen v3, commit 58f5484; stacking of 17 families, C = 0.01, fitted on
+  validation only, chosen by CV for accuracy): **test 68.35 / 66.84 / 47.61** (acc / wF1 / mF1), 95 % CI accuracy
+  [66.33, 70.41], wF1 [64.65, 69.06]. Paired vs the pre-final ensemble: accuracy +0.45 [-0.56, +1.43], wF1 +0.53
+  [-0.51, +1.54] (not significant). vs AMB-DSGDN (66.07 / 66.18): +2.28 accuracy, +0.66 wF1 (point estimates).
+  Record: TEST_SCORED_meld_THIRD_LOOK.json. All three looks are reported: first 67.59 / 65.97 (frozen protocol, wF1
+  target), second 67.09 / 65.49 (DBc 4 seeds), third 68.35 / 66.84 (stacking, accuracy target).
