@@ -1,0 +1,364 @@
+{
+ "families": [
+  "B",
+  "D",
+  "F",
+  "H2fam",
+  "H3",
+  "H3c",
+  "H2c",
+  "H17",
+  "DBc",
+  "control",
+  "wavlm_l22",
+  "wavlm_mean",
+  "ctx_dropout",
+  "crct",
+  "face",
+  "face_crct"
+ ],
+ "cv": {
+  "M1": {
+   "cv_accuracy": 0.6684523093286059,
+   "cv_accuracy_sd": 0.03504694351447591,
+   "cv_weighted_f1": 0.6448078090314733
+  },
+  "M2": {
+   "cv_accuracy": 0.6669117664290686,
+   "cv_accuracy_sd": 0.033774836380961716,
+   "cv_weighted_f1": 0.6441541627857041
+  },
+  "M3": {
+   "cv_accuracy": 0.6732744549192884,
+   "cv_accuracy_sd": 0.02420686195105691,
+   "cv_weighted_f1": 0.6563986693474273
+  }
+ },
+ "chosen": "M3",
+ "full_fit": {
+  "M1": {
+   "families": [
+    "DBc",
+    "H2c",
+    "H3c",
+    "D"
+   ]
+  },
+  "M2": {
+   "families": [
+    "DBc",
+    "H2c",
+    "H3c",
+    "D"
+   ],
+   "tau": -0.0
+  },
+  "M3": {
+   "C": 0.01
+  }
+ },
+ "fold_choices": {
+  "M1": [
+   {
+    "families": [
+     "DBc",
+     "H2c",
+     "H3c",
+     "D"
+    ]
+   },
+   {
+    "families": [
+     "DBc",
+     "H3",
+     "wavlm_mean",
+     "H2c"
+    ]
+   },
+   {
+    "families": [
+     "DBc",
+     "H3c",
+     "crct"
+    ]
+   },
+   {
+    "families": [
+     "DBc",
+     "H3c",
+     "H2fam",
+     "D"
+    ]
+   },
+   {
+    "families": [
+     "DBc",
+     "face",
+     "H3c",
+     "H3"
+    ]
+   },
+   {
+    "families": [
+     "DBc",
+     "H3",
+     "D",
+     "H3c",
+     "face_crct"
+    ]
+   },
+   {
+    "families": [
+     "DBc",
+     "wavlm_l22"
+    ]
+   },
+   {
+    "families": [
+     "DBc",
+     "H2c",
+     "H3c",
+     "D"
+    ]
+   },
+   {
+    "families": [
+     "H3c",
+     "DBc",
+     "H2c",
+     "D",
+     "face_crct"
+    ]
+   },
+   {
+    "families": [
+     "DBc",
+     "ctx_dropout",
+     "H3c",
+     "H3"
+    ]
+   },
+   {
+    "families": [
+     "DBc",
+     "H3",
+     "wavlm_mean",
+     "H2c"
+    ]
+   },
+   {
+    "families": [
+     "DBc",
+     "H3c",
+     "H2c"
+    ]
+   },
+   {
+    "families": [
+     "DBc",
+     "wavlm_l22"
+    ]
+   },
+   {
+    "families": [
+     "DBc",
+     "H2c",
+     "D",
+     "H3c"
+    ]
+   },
+   {
+    "families": [
+     "DBc",
+     "H3",
+     "D",
+     "H3c",
+     "ctx_dropout",
+     "H2c"
+    ]
+   }
+  ],
+  "M2": [
+   {
+    "families": [
+     "DBc",
+     "H2c",
+     "H3c",
+     "D"
+    ],
+    "tau": -0.0
+   },
+   {
+    "families": [
+     "DBc",
+     "H3",
+     "wavlm_mean",
+     "H2c"
+    ],
+    "tau": -0.0
+   },
+   {
+    "families": [
+     "DBc",
+     "H3c",
+     "crct"
+    ],
+    "tau": -0.0
+   },
+   {
+    "families": [
+     "DBc",
+     "H3c",
+     "H2fam",
+     "D"
+    ],
+    "tau": -0.0
+   },
+   {
+    "families": [
+     "DBc",
+     "face",
+     "H3c",
+     "H3"
+    ],
+    "tau": -0.0
+   },
+   {
+    "families": [
+     "DBc",
+     "H3",
+     "D",
+     "H3c",
+     "face_crct"
+    ],
+    "tau": -0.0
+   },
+   {
+    "families": [
+     "DBc",
+     "wavlm_l22"
+    ],
+    "tau": -0.0
+   },
+   {
+    "families": [
+     "DBc",
+     "H2c",
+     "H3c",
+     "D"
+    ],
+    "tau": -0.0
+   },
+   {
+    "families": [
+     "H3c",
+     "DBc",
+     "H2c",
+     "D",
+     "face_crct"
+    ],
+    "tau": -0.0
+   },
+   {
+    "families": [
+     "DBc",
+     "ctx_dropout",
+     "H3c",
+     "H3"
+    ],
+    "tau": -0.0
+   },
+   {
+    "families": [
+     "DBc",
+     "H3",
+     "wavlm_mean",
+     "H2c"
+    ],
+    "tau": -0.0
+   },
+   {
+    "families": [
+     "DBc",
+     "H3c",
+     "H2c"
+    ],
+    "tau": 0.1
+   },
+   {
+    "families": [
+     "DBc",
+     "wavlm_l22"
+    ],
+    "tau": -0.0
+   },
+   {
+    "families": [
+     "DBc",
+     "H2c",
+     "D",
+     "H3c"
+    ],
+    "tau": 0.1
+   },
+   {
+    "families": [
+     "DBc",
+     "H3",
+     "D",
+     "H3c",
+     "ctx_dropout",
+     "H2c"
+    ],
+    "tau": -0.0
+   }
+  ],
+  "M3": [
+   {
+    "C": 0.1
+   },
+   {
+    "C": 0.1
+   },
+   {
+    "C": 0.1
+   },
+   {
+    "C": 0.03
+   },
+   {
+    "C": 0.1
+   },
+   {
+    "C": 0.03
+   },
+   {
+    "C": 0.03
+   },
+   {
+    "C": 0.01
+   },
+   {
+    "C": 0.03
+   },
+   {
+    "C": 0.03
+   },
+   {
+    "C": 0.03
+   },
+   {
+    "C": 0.1
+   },
+   {
+    "C": 0.01
+   },
+   {
+    "C": 0.01
+   },
+   {
+    "C": 0.01
+   }
+  ]
+ }
+}

@@ -3,290 +3,324 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Multimodal Emotion AI</title>
+<title>Multimodal Emotion Recognition</title>
 <style>
   :root {
-    --bg: #0f1220;
-    --panel: #171b2e;
-    --panel-2: #1f2440;
-    --border: #2c3154;
-    --text: #e8e9f3;
-    --muted: #9497b3;
-    --accent: #7c5cff;
-    --accent-2: #33d6b0;
-    --warn: #ffb454;
-    --danger: #ff6b81;
-    --text-c: #5aa9ff;
-    --audio-c: #ffb454;
-    --video-c: #33d6b0;
+    --bg: #0e1120; --panel: #161a2d; --panel-2: #1e2340; --border: #2b3052; --text: #e9eaf4; --muted: #9a9dbb;
+    --accent: #7c5cff; --accent-2: #33d6b0; --warn: #ffb454; --danger: #ff6b81;
+    --text-c: #5aa9ff; --audio-c: #ffb454; --video-c: #33d6b0;
+    --neutral: #8e96b8; --surprise: #ffd166; --fear: #b388ff; --sadness: #5aa9ff; --joy: #33d6b0; --disgust: #9ccc65; --anger: #ff6b81;
   }
   * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-    background: radial-gradient(1200px 600px at 20% -10%, #1c2140 0%, var(--bg) 60%);
-    color: var(--text);
-    min-height: 100vh;
-    padding: 24px 16px 60px;
-  }
-  .wrap { max-width: 1100px; margin: 0 auto; }
-  header { text-align: center; margin-bottom: 28px; }
-  header h1 {
-    font-size: 28px; margin: 0 0 6px;
-    background: linear-gradient(90deg, var(--accent), var(--accent-2));
-    -webkit-background-clip: text; background-clip: text; color: transparent;
-  }
-  header p { color: var(--muted); margin: 0; font-size: 14px; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
-  .panel {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 14px; padding: 20px;
-  }
-  .panel h2 {
-    font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--muted); margin: 0 0 14px;
-  }
-  select, button {
-    font-family: inherit; font-size: 14px; border-radius: 8px;
-    border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
-    padding: 10px 12px; width: 100%;
-  }
-  select { margin-bottom: 12px; }
-  .utterance-list { max-height: 220px; overflow-y: auto; border: 1px solid var(--border); border-radius: 10px; }
-  .utt {
-    padding: 10px 12px; border-bottom: 1px solid var(--border);
-    cursor: pointer; display: flex; justify-content: space-between; gap: 8px; font-size: 13px;
-  }
-  .utt:last-child { border-bottom: none; }
-  .utt:hover { background: var(--panel-2); }
-  .utt.selected { background: rgba(124,92,255,0.18); border-left: 3px solid var(--accent); }
-  .utt .badge {
-    font-size: 11px; padding: 2px 8px; border-radius: 999px;
-    background: var(--panel-2); color: var(--muted); white-space: nowrap;
-  }
-  video { width: 100%; border-radius: 10px; background: #000; margin: 14px 0; display: none; }
-  .toggles { display: flex; gap: 14px; margin: 14px 0; flex-wrap: wrap; }
-  .toggle { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
-  .toggle input { accent-color: var(--accent); width: 16px; height: 16px; }
-  #analyzeBtn {
-    margin-top: 6px; background: linear-gradient(90deg, var(--accent), #5b3fd6);
-    border: none; font-weight: 600; cursor: pointer; letter-spacing: 0.03em;
-  }
-  #analyzeBtn:disabled { opacity: 0.5; cursor: not-allowed; }
-  #analyzeBtn:hover:not(:disabled) { filter: brightness(1.1); }
-  .result-empty { color: var(--muted); font-size: 14px; text-align: center; padding: 40px 10px; }
-  .pred-head { text-align: center; margin-bottom: 18px; }
-  .pred-emoji { font-size: 46px; }
-  .pred-name { font-size: 24px; font-weight: 700; margin: 4px 0 2px; }
-  .pred-conf { color: var(--muted); font-size: 13px; }
-  .gt-note { font-size: 12px; color: var(--muted); margin-top: 4px; }
-  .gt-note.match { color: var(--accent-2); }
-  .gt-note.mismatch { color: var(--danger); }
-  .bar-row { display: grid; grid-template-columns: 60px 1fr 42px; align-items: center; gap: 8px; font-size: 12px; margin: 6px 0; }
-  .bar-track { height: 10px; background: var(--panel-2); border-radius: 6px; overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 6px; }
-  .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 18px 0 8px; }
-  .disagree-badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-  .disagree-LOW { background: rgba(51,214,176,0.15); color: var(--accent-2); }
-  .disagree-MEDIUM { background: rgba(255,180,84,0.15); color: var(--warn); }
-  .disagree-HIGH { background: rgba(255,107,129,0.15); color: var(--danger); }
-  .modality-preds { display: flex; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 6px; flex-wrap: wrap; }
-  .modality-preds span b { color: var(--text); }
-  .explanation { font-size: 13px; line-height: 1.5; color: var(--text); background: var(--panel-2); border-radius: 10px; padding: 12px 14px; margin-top: 8px; }
-  .footnote { font-size: 11px; color: var(--muted); text-align: center; margin-top: 30px; line-height: 1.6; }
-  #status { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; color: var(--text);
+         background: radial-gradient(1100px 600px at 15% -10%, #1d2244 0%, var(--bg) 60%); min-height: 100vh; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 18px 16px 50px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+  header h1 { margin: 0; font-size: 24px; background: linear-gradient(90deg, var(--accent), var(--accent-2));
+              -webkit-background-clip: text; background-clip: text; color: transparent; }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+  .tabs { display: flex; gap: 6px; background: var(--panel); border: 1px solid var(--border); padding: 4px; border-radius: 10px; }
+  .tab { padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--muted); border: none; background: none; }
+  .tab.active { background: var(--accent); color: #fff; }
+  #status { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+  .grid { display: grid; grid-template-columns: 420px 1fr; gap: 16px; }
+  @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+  .panel h2 { margin: 0 0 12px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  select, button { font: inherit; font-size: 14px; border-radius: 8px; border: 1px solid var(--border);
+                   background: var(--panel-2); color: var(--text); padding: 9px 11px; }
+  select { width: 100%; margin-bottom: 10px; }
+  .chat { max-height: 560px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; }
+  .bubble { border: 1px solid var(--border); border-left: 4px solid var(--neutral); border-radius: 10px; padding: 8px 10px;
+            background: var(--panel-2); cursor: pointer; transition: transform .08s; }
+  .bubble:hover { transform: translateX(2px); }
+  .bubble.selected { outline: 2px solid var(--accent); }
+  .bubble .who { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 6px; }
+  .bubble .line { font-size: 14px; margin: 4px 0 6px; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; font-size: 11px; }
+  .tag { padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,0.06); color: var(--muted); }
+  .tag b { color: var(--text); font-weight: 600; }
+  .ok { color: var(--accent-2) !important; } .bad { color: var(--danger) !important; }
+  .detail { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .detail { grid-template-columns: 1fr; } }
+  video { width: 100%; border-radius: 10px; background: #000; display: block; }
+  .pred-card { text-align: center; padding: 10px; }
+  .pred-emoji { font-size: 44px; } .pred-name { font-size: 22px; font-weight: 700; margin: 2px 0; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .row { display: grid; grid-template-columns: 70px 1fr 44px; gap: 8px; align-items: center; font-size: 12px; margin: 5px 0; }
+  .track { height: 10px; background: var(--panel-2); border-radius: 6px; overflow: hidden; }
+  .fill { height: 100%; border-radius: 6px; }
+  .sec { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px; }
+  .toggles { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin: 6px 0 8px; }
+  .toggles input { accent-color: var(--accent); }
+  .btn { background: linear-gradient(90deg, var(--accent), #5b3fd6); border: none; font-weight: 600; cursor: pointer; width: 100%; }
+  .btn:disabled { opacity: .5; cursor: wait; }
+  .explain { background: var(--panel-2); border-radius: 10px; padding: 10px 12px; font-size: 13px; line-height: 1.5; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; font-size: 12px; }
+  .chip { padding: 3px 9px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border); }
+  table.heat { width: 100%; border-collapse: separate; border-spacing: 3px; font-size: 12px; }
+  table.heat th { color: var(--muted); font-weight: 500; text-align: center; padding: 4px; }
+  table.heat th.r { text-align: left; }
+  table.heat td { text-align: center; padding: 8px 4px; border-radius: 6px; font-variant-numeric: tabular-nums; }
+  .legend { display: flex; gap: 12px; font-size: 11px; color: var(--muted); margin-top: 6px; flex-wrap: wrap; }
+  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+  .card .big { font-size: 30px; font-weight: 700; }
+  .card .lbl { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  table.cmp { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.cmp td, table.cmp th { padding: 7px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+  table.cmp tr.ours td { background: rgba(124,92,255,0.15); font-weight: 600; }
+  .hbar { display: grid; grid-template-columns: 170px 1fr; gap: 8px; align-items: center; margin: 6px 0; font-size: 12px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .two { grid-template-columns: 1fr; } }
+  ul.find { margin: 0; padding-left: 18px; line-height: 1.6; font-size: 14px; }
+  .hidden { display: none; }
+  .foot { color: var(--muted); font-size: 11px; text-align: center; margin-top: 24px; line-height: 1.6; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>MULTIMODAL EMOTION AI</h1>
-    <p>Context-aware adaptive tri-modal fusion &mdash; text + audio + video, MELD dataset</p>
+    <div>
+      <h1>Multimodal Emotion Recognition in Conversation</h1>
+      <p>Text + voice + face, conversational context, MELD &mdash; with a live analysis of what the model actually uses</p>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-tab="live">Live demo</button>
+      <button class="tab" data-tab="results">Project results</button>
+    </div>
   </header>
+  <div id="status">Loading model and test dialogues&hellip;</div>
 
-  <div id="status">Loading model &amp; test examples&hellip;</div>
-
-  <div class="grid">
-    <div class="panel">
-      <h2>1. Pick a dialogue &amp; utterance</h2>
-      <select id="dialogueSelect"></select>
-      <div class="utterance-list" id="utteranceList"></div>
-
-      <video id="videoPlayer" controls></video>
-
-      <div class="section-title">Modalities to use</div>
-      <div class="toggles">
-        <label class="toggle"><input type="checkbox" id="useText" checked> Text</label>
-        <label class="toggle"><input type="checkbox" id="useAudio" checked> Audio</label>
-        <label class="toggle"><input type="checkbox" id="useVideo" checked> Video</label>
+  <!-- ===================================================== LIVE DEMO -->
+  <section id="tab-live">
+    <div class="grid">
+      <div class="panel">
+        <h2>1. Conversation (MELD test set)</h2>
+        <select id="dialogueSelect"></select>
+        <div class="chips" style="margin-bottom:10px">
+          <span class="chip">Gold = annotated emotion</span><span class="chip">B = single model</span><span class="chip">Ens = final ensemble</span>
+        </div>
+        <div class="chat" id="chat"></div>
       </div>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 10px;">
-        Uncheck a modality to see how the model copes with it missing &mdash; it re-runs a real forward pass with that input zeroed out.
-      </p>
 
-      <button id="analyzeBtn" disabled>ANALYZE</button>
+      <div>
+        <div class="panel" id="detail">
+          <h2>2. Selected line</h2>
+          <div class="muted" style="padding:30px;text-align:center">Click a line of the conversation.</div>
+        </div>
+        <div class="panel" style="margin-top:16px">
+          <h2>3. Whose voice, which channel? &mdash; live context attribution</h2>
+          <div class="muted">For the selected line, the model is re-run with one part of the conversation hidden at a time
+            (whose lines &times; before/after &times; which channel). Each cell shows how the probability of the
+            predicted emotion changes; a &#x21BB; marks a changed prediction. The selected line itself is never altered.</div>
+          <div id="heat" style="margin-top:10px"></div>
+        </div>
+      </div>
     </div>
+  </section>
 
-    <div class="panel" id="resultPanel">
-      <h2>2. Result</h2>
-      <div class="result-empty">Pick an utterance and click Analyze.</div>
+  <!-- ===================================================== RESULTS -->
+  <section id="tab-results" class="hidden">
+    <div class="cards" id="cards"></div>
+    <div class="two">
+      <div class="panel">
+        <h2>MELD test: comparison with published systems (weighted F1 %)</h2>
+        <table class="cmp" id="cmp"></table>
+        <div class="muted" style="margin-top:8px">Published values as reported in each paper (verified). Ours: validation-chosen
+          ensemble, test set scored once, with a 95% bootstrap interval. Within the interval we are comparable to the base paper.</div>
+      </div>
+      <div class="panel">
+        <h2>Key findings</h2>
+        <ul class="find">
+          <li>The fusion relies almost entirely on text; much stronger WavLM audio received <b>less</b> weight.</li>
+          <li>On MELD (multi-party) the models ignore the voices and faces of the surrounding lines.</li>
+          <li>On MC-EIU (two-person) they use context, above all the <b>partner's earlier words</b>.</li>
+          <li>Scene video carried no emotion signal; <b>face-expression features</b> make video useful.</li>
+          <li>Context dropout gives a statistically confirmed gain on MC-EIU.</li>
+          <li>When all ensemble members agree, the prediction is right far more often (reliability signal).</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Change in accuracy when part of the context is hidden (validation, points)</h2>
+        <div id="ctxbars"></div>
+      </div>
+      <div class="panel">
+        <h2>How the fusion uses its inputs (audit, validation)</h2>
+        <div id="audit"></div>
+        <h2 style="margin-top:16px">Reliability: accuracy by ensemble agreement (MELD test)</h2>
+        <div id="rel"></div>
+      </div>
     </div>
-  </div>
+  </section>
 
-  <div class="footnote">
-    This demo runs real inference through the trained adaptive-fusion model on genuine MELD test-set utterances<br>
-    (the original text/audio feature extractors were never released, so arbitrary free-text/upload input can't be
-    mapped into the same feature space &mdash; see README).
-  </div>
+  <div class="foot">Every live prediction is a real forward pass of the trained fusion model (model B) on genuine MELD test
+    utterances; the ensemble column shows the stored test predictions of the frozen final ensemble.<br>
+    The original MELD audio extractor was never released, so new recordings cannot be mapped into its feature space.</div>
 </div>
 
 <script>
-const API = "";
 const EMOJI = { neutral: "😐", surprise: "😲", fear: "😨", sadness: "😢", joy: "😄", disgust: "🤢", anger: "😠" };
-const EMOTIONS = ["neutral","surprise","fear","sadness","joy","disgust","anger"];
-const MOD_COLOR = { text: "var(--text-c)", audio: "var(--audio-c)", video: "var(--video-c)" };
+const EMOTIONS = ["neutral", "surprise", "fear", "sadness", "joy", "disgust", "anger"];
+const ECOL = e => `var(--${e})`;
+const MCOL = { text: "var(--text-c)", audio: "var(--audio-c)", video: "var(--video-c)" };
+let examples = [], dlg = null, dIndex = 0, sel = null;
+const $ = id => document.getElementById(id);
 
-let examples = [];
-let currentDialogue = null;
-let currentUtteranceIndex = null;
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("active", x === t));
+  $("tab-live").classList.toggle("hidden", t.dataset.tab !== "live");
+  $("tab-results").classList.toggle("hidden", t.dataset.tab !== "results");
+}));
 
-const statusEl = document.getElementById("status");
-const dialogueSelect = document.getElementById("dialogueSelect");
-const utteranceList = document.getElementById("utteranceList");
-const videoPlayer = document.getElementById("videoPlayer");
-const analyzeBtn = document.getElementById("analyzeBtn");
-const resultPanel = document.getElementById("resultPanel");
+function bar(label, v, color, suffix = "%") {
+  const p = Math.max(0, Math.min(100, Math.round(v * 100)));
+  return `<div class="row"><span>${label}</span><div class="track"><div class="fill" style="width:${p}%;background:${color}"></div></div><span>${p}${suffix}</span></div>`;
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 
 async function init() {
   try {
-    const health = await fetch(API + "/health").then(r => r.json());
-    examples = await fetch(API + "/examples").then(r => r.json());
-
-    dialogueSelect.innerHTML = examples.map(ex =>
-      `<option value="${ex.dialogue_index}">Dialogue ${ex.dialogue_id} (${ex.num_utterances} utterances)</option>`
-    ).join("");
-
-    statusEl.textContent = `Model ready on ${health.device} — checkpoint val accuracy ${(health.checkpoint_val_accuracy*100).toFixed(1)}%, ${examples.length} test dialogues loaded.`;
-
-    dialogueSelect.addEventListener("change", () => selectDialogue(parseInt(dialogueSelect.value)));
-    selectDialogue(0);
+    const health = await fetch("/health").then(r => r.json());
+    examples = await fetch("/examples").then(r => r.json());
+    $("dialogueSelect").innerHTML = examples.map(e =>
+      `<option value="${e.dialogue_index}">Dialogue ${e.dialogue_id} (${e.num_utterances} lines)</option>`).join("");
+    $("dialogueSelect").addEventListener("change", e => loadDialogue(parseInt(e.target.value)));
+    $("status").textContent = `Model ready on ${health.device} · ${examples.length} test dialogues · single model B + frozen final ensemble`;
+    const d72 = examples.find(e => String(e.dialogue_id) === "72");
+    await loadDialogue(d72 ? d72.dialogue_index : 0);
+    if (d72) selectLine(5);
+    loadResults();
   } catch (e) {
-    statusEl.textContent = "Could not reach the backend at " + API + " — is it running?";
+    $("status").textContent = "Could not reach the backend. Is it running?";
     console.error(e);
   }
 }
 
-function selectDialogue(index) {
-  currentDialogue = examples[index];
-  currentUtteranceIndex = null;
-  dialogueSelect.value = index;
-
-  utteranceList.innerHTML = currentDialogue.labels.map((label, i) =>
-    `<div class="utt" data-i="${i}"><span>Utterance ${i}</span><span class="badge">${EMOJI[label]} ${label}</span></div>`
-  ).join("");
-
-  [...utteranceList.children].forEach(el => {
-    el.addEventListener("click", () => selectUtterance(parseInt(el.dataset.i)));
-  });
-
-  videoPlayer.style.display = "none";
-  analyzeBtn.disabled = true;
-  resultPanel.innerHTML = '<h2>2. Result</h2><div class="result-empty">Pick an utterance and click Analyze.</div>';
+async function loadDialogue(i) {
+  dIndex = i; $("dialogueSelect").value = i;
+  dlg = await fetch(`/dialogue/${i}`).then(r => r.json());
+  $("chat").innerHTML = dlg.utterances.map(u => `
+    <div class="bubble" data-i="${u.utterance_index}" style="border-left-color:${ECOL(u.gold)}">
+      <div class="who"><span><b style="color:var(--text)">${esc(u.speaker)}</b> · line ${u.utterance_index}</span>
+        <span title="ensemble agreement">${"●".repeat(u.ensemble_agree)}${"○".repeat(u.ensemble_size - u.ensemble_agree)}</span></div>
+      <div class="line">${esc(u.text)}</div>
+      <div class="tags">
+        <span class="tag">Gold <b>${EMOJI[u.gold]} ${u.gold}</b></span>
+        <span class="tag ${u.model_b === u.gold ? "ok" : "bad"}">B ${u.model_b}</span>
+        <span class="tag ${u.ensemble === u.gold ? "ok" : "bad"}">Ens ${u.ensemble}</span>
+      </div>
+    </div>`).join("");
+  [...$("chat").children].forEach(el => el.addEventListener("click", () => selectLine(parseInt(el.dataset.i))));
+  $("detail").innerHTML = '<h2>2. Selected line</h2><div class="muted" style="padding:30px;text-align:center">Click a line of the conversation.</div>';
+  $("heat").innerHTML = "";
 }
 
-function selectUtterance(i) {
-  currentUtteranceIndex = i;
-  [...utteranceList.children].forEach(el => el.classList.toggle("selected", parseInt(el.dataset.i) === i));
-
-  const uttId = currentDialogue.utterance_ids[i];
-  videoPlayer.src = `${API}/video/${currentDialogue.dialogue_id}/${uttId}`;
-  videoPlayer.style.display = "block";
-
-  analyzeBtn.disabled = false;
-}
-
-function bar(label, value, color) {
-  const pct = Math.round(value * 100);
-  return `<div class="bar-row">
-    <span>${label}</span>
-    <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
-    <span>${pct}%</span>
-  </div>`;
+function selectLine(i) {
+  sel = i;
+  [...$("chat").children].forEach(el => el.classList.toggle("selected", parseInt(el.dataset.i) === i));
+  const u = dlg.utterances[i];
+  $("detail").innerHTML = `
+    <h2>2. Selected line</h2>
+    <div class="detail">
+      <div>
+        <video controls src="/video/${dlg.dialogue_id}/${u.utterance_id}"></video>
+        <div class="muted" style="margin-top:8px"><b style="color:var(--text)">${esc(u.speaker)}:</b> “${esc(u.text)}”</div>
+        <div class="sec">Channels the model may use</div>
+        <div class="toggles">
+          <label><input type="checkbox" id="useText" checked> Words</label>
+          <label><input type="checkbox" id="useAudio" checked> Voice</label>
+          <label><input type="checkbox" id="useVideo" checked> Face / scene</label>
+        </div>
+        <button class="btn" id="analyzeBtn">ANALYZE</button>
+        <div class="sec">Final ensemble (stored test prediction)</div>
+        <div class="chips">${Object.entries(u.ensemble_votes).map(([f, e]) => `<span class="chip">${f}: ${EMOJI[e]} ${e}</span>`).join("")}</div>
+        <div class="muted" style="margin-top:6px">Ensemble: <b style="color:var(--text)">${u.ensemble}</b> (${Math.round(u.ensemble_conf * 100)}%),
+          ${u.ensemble_agree} of ${u.ensemble_size} members agree.</div>
+      </div>
+      <div id="pred"><div class="muted" style="padding:30px;text-align:center">Press ANALYZE.</div></div>
+    </div>`;
+  $("analyzeBtn").addEventListener("click", analyze);
+  analyze();
+  attribution();
 }
 
 async function analyze() {
-  analyzeBtn.disabled = true;
-  analyzeBtn.textContent = "ANALYZING…";
-  resultPanel.innerHTML = '<h2>2. Result</h2><div class="result-empty">Running inference…</div>';
-
-  const payload = {
-    dialogue_index: currentDialogue.dialogue_index,
-    utterance_index: currentUtteranceIndex,
-    use_text: document.getElementById("useText").checked,
-    use_audio: document.getElementById("useAudio").checked,
-    use_video: document.getElementById("useVideo").checked,
-  };
-
+  const btn = $("analyzeBtn"); btn.disabled = true; btn.textContent = "ANALYZING…";
   try {
-    const res = await fetch(API + "/predict", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    const data = await res.json();
-    renderResult(data);
+    const data = await fetch("/predict", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dialogue_index: dIndex, utterance_index: sel, use_text: $("useText").checked,
+        use_audio: $("useAudio").checked, use_video: $("useVideo").checked }) }).then(r => r.json());
+    const match = data.predicted_emotion === data.ground_truth;
+    $("pred").innerHTML = `
+      <div class="pred-card">
+        <div class="pred-emoji">${EMOJI[data.predicted_emotion]}</div>
+        <div class="pred-name" style="color:${ECOL(data.predicted_emotion)}">${data.predicted_emotion.toUpperCase()}</div>
+        <div class="muted">${Math.round(data.confidence * 100)}% confidence · gold: <span class="${match ? "ok" : "bad"}">${data.ground_truth}</span></div>
+      </div>
+      <div class="sec">Emotion probabilities</div>
+      ${EMOTIONS.map(e => bar(e, data.probabilities[e], ECOL(e))).join("")}
+      <div class="sec">Adaptive modality weights</div>
+      ${bar("Words", data.modality_weights.text, MCOL.text)}${bar("Voice", data.modality_weights.audio, MCOL.audio)}${bar("Face/scene", data.modality_weights.video, MCOL.video)}
+      <div class="sec">Each channel alone</div>
+      <div class="chips"><span class="chip">Words: ${EMOJI[data.modality_predictions.text]} ${data.modality_predictions.text}</span>
+        <span class="chip">Voice: ${EMOJI[data.modality_predictions.audio]} ${data.modality_predictions.audio}</span>
+        <span class="chip">Face/scene: ${EMOJI[data.modality_predictions.video]} ${data.modality_predictions.video}</span>
+        <span class="chip">${data.disagreement_level} disagreement</span></div>
+      <div class="sec">Explanation</div>
+      <div class="explain">${esc(data.explanation)}</div>`;
   } catch (e) {
-    resultPanel.innerHTML = '<h2>2. Result</h2><div class="result-empty">Prediction failed. ' + e.message + '</div>';
-  } finally {
-    analyzeBtn.disabled = false;
-    analyzeBtn.textContent = "ANALYZE";
-  }
+    $("pred").innerHTML = '<div class="muted">Prediction failed.</div>';
+  } finally { btn.disabled = false; btn.textContent = "ANALYZE"; }
 }
 
-function renderResult(data) {
-  const match = data.predicted_emotion === data.ground_truth;
-  const probRows = EMOTIONS.map(e =>
-    bar(e, data.probabilities[e], e === data.predicted_emotion ? "var(--accent)" : "var(--border)")
-  ).join("");
-
-  const modalityRows =
-    bar("Text", data.modality_weights.text, MOD_COLOR.text) +
-    bar("Audio", data.modality_weights.audio, MOD_COLOR.audio) +
-    bar("Video", data.modality_weights.video, MOD_COLOR.video);
-
-  const modPreds = `<div class="modality-preds">
-    <span>Text alone: <b>${data.modality_predictions.text}</b></span>
-    <span>Audio alone: <b>${data.modality_predictions.audio}</b></span>
-    <span>Video alone: <b>${data.modality_predictions.video}</b></span>
-  </div>`;
-
-  resultPanel.innerHTML = `
-    <h2>2. Result</h2>
-    <div class="pred-head">
-      <div class="pred-emoji">${EMOJI[data.predicted_emotion]}</div>
-      <div class="pred-name">${data.predicted_emotion.toUpperCase()}</div>
-      <div class="pred-conf">${(data.confidence*100).toFixed(0)}% confidence</div>
-      <div class="gt-note ${match ? 'match' : 'mismatch'}">Ground truth: ${data.ground_truth} ${match ? '(match)' : '(different)'}</div>
-    </div>
-
-    <div class="section-title">Adaptive modality weights</div>
-    ${modalityRows}
-
-    <div class="section-title">Emotion probabilities</div>
-    ${probRows}
-
-    <div class="section-title">Modality agreement</div>
-    <span class="disagree-badge disagree-${data.disagreement_level}">${data.disagreement_level} disagreement</span>
-    ${modPreds}
-
-    <div class="section-title">Explanation</div>
-    <div class="explanation">${data.explanation}</div>
-  `;
+function heatColor(d) {
+  if (d === null) return "transparent";
+  const a = Math.min(1, Math.abs(d) / 0.25);
+  return d < 0 ? `rgba(255,107,129,${0.12 + 0.75 * a})` : `rgba(51,214,176,${0.12 + 0.75 * a})`;
 }
 
-analyzeBtn.addEventListener("click", analyze);
+async function attribution() {
+  $("heat").innerHTML = '<div class="muted">Computing (one forward pass per cell)…</div>';
+  const a = await fetch("/attribution", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dialogue_index: dIndex, utterance_index: sel }) }).then(r => r.json());
+  const head = `<tr><th class="r">Hidden part (lines)</th>${a.modalities.map(m => `<th>${m}</th>`).join("")}</tr>`;
+  const rows = a.grid.map(r => `<tr><th class="r">${r.cell} <span class="muted">(${r.count})</span></th>${r.values.map(v => v === null
+      ? `<td class="muted">—</td>`
+      : `<td style="background:${heatColor(v.delta)}" title="new prediction: ${v.new_prediction}">${v.delta >= 0 ? "+" : ""}${(v.delta * 100).toFixed(1)}${v.new_prediction !== a.prediction ? " ↻" : ""}</td>`).join("")}</tr>`).join("");
+  $("heat").innerHTML = `<div class="muted" style="margin-bottom:6px">Model B predicts <b style="color:var(--text)">${a.prediction}</b>
+      (${Math.round(a.confidence * 100)}%); values = change in that probability, in points.</div>
+    <table class="heat">${head}${rows}</table>
+    <div class="legend"><span><span class="sw" style="background:rgba(255,107,129,.8)"></span>hiding it lowers the prediction (the model uses it)</span>
+      <span><span class="sw" style="background:rgba(51,214,176,.8)"></span>hiding it raises the prediction</span><span>↻ prediction changes</span></div>`;
+}
+
+async function loadResults() {
+  const s = await fetch("summary.json").then(r => r.json());
+  const f = s.final;
+  $("cards").innerHTML = `
+    <div class="card"><div class="lbl">MELD test accuracy</div><div class="big">${f.meld.accuracy}%</div><div class="muted">final ensemble (scored once)</div></div>
+    <div class="card"><div class="lbl">MELD test weighted F1</div><div class="big">${f.meld.weighted_f1}%</div><div class="muted">95% CI ${f.meld.ci_weighted_f1[0]}–${f.meld.ci_weighted_f1[1]}</div></div>
+    <div class="card"><div class="lbl">MC-EIU test (2nd dataset)</div><div class="big">${f.mceiu.accuracy}%</div><div class="muted">weighted F1 ${f.mceiu.weighted_f1}%, context dropout +${f.mceiu.gain_vs_base_weighted_f1} (CI ${f.mceiu.gain_ci[0]} to ${f.mceiu.gain_ci[1]})</div></div>
+    <div class="card"><div class="lbl">Pre-final ensemble</div><div class="big">${f.prefinal.accuracy}%</div><div class="muted">weighted F1 ${f.prefinal.weighted_f1}%</div></div>`;
+  const rows = s.published.map(([n, w, a]) => ({ n, w, a, ours: false }));
+  rows.push({ n: "This project (final ensemble)", w: f.meld.weighted_f1, a: f.meld.accuracy, ours: true });
+  rows.sort((x, y) => y.w - x.w);
+  $("cmp").innerHTML = `<tr><th>System</th><th>Weighted F1</th><th>Accuracy</th></tr>` + rows.map(r =>
+    `<tr class="${r.ours ? "ours" : ""}"><td>${r.n}</td><td>${r.w.toFixed(2)}</td><td>${r.a ? r.a.toFixed(2) : "—"}</td></tr>`).join("");
+  const g = s.context.groups, names = Object.keys(g);
+  $("ctxbars").innerHTML = s.context.cells.map((c, i) => `<div class="sec">${c}</div>` + names.map(n => {
+    const v = g[n][i], w = Math.min(100, Math.abs(v) / 2 * 100);
+    return `<div class="hbar"><span>${n}</span><div class="track"><div class="fill" style="width:${w}%;background:${v < 0 ? "var(--danger)" : "var(--accent-2)"}"></div></div></div>
+            <div class="muted" style="text-align:right;margin-top:-4px">${v > 0 ? "+" : ""}${v.toFixed(2)}</div>`;
+  }).join("")).join("") + `<div class="muted" style="margin-top:8px">Negative = the model needs that context. Mean of three seeds per dataset.</div>`;
+  $("audit").innerHTML = Object.entries(s.audit).map(([k, v]) =>
+    `<div class="sec">${k}</div>${bar("Text first", v.text_largest_share / 100, "var(--text-c)")}
+     <div class="muted">accuracy added by video: ${v.video_adds > 0 ? "+" : ""}${v.video_adds} points</div>`).join("");
+  $("rel").innerHTML = Object.entries(s.reliability).filter(([k, v]) => v.n > 20).map(([k, v]) =>
+    bar(k.replace("_of_", "/"), v.accuracy / 100, "var(--accent)") + `<div class="muted" style="text-align:right;margin-top:-4px">${v.n} utterances</div>`).join("");
+}
 init();
 </script>
 </body>

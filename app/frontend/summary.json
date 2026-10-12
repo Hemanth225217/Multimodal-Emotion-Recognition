@@ -1,0 +1,148 @@
+{
+ "final": {
+  "meld": {
+   "accuracy": 67.59,
+   "weighted_f1": 65.97,
+   "macro_f1": 45.37,
+   "ci_weighted_f1": [
+    63.65,
+    68.28
+   ],
+   "members": [
+    "H3c",
+    "DBc",
+    "ctx_dropout",
+    "H3"
+   ]
+  },
+  "prefinal": {
+   "accuracy": 67.89,
+   "weighted_f1": 66.3,
+   "macro_f1": 46.0
+  },
+  "mceiu": {
+   "accuracy": 52.13,
+   "weighted_f1": 48.74,
+   "macro_f1": 23.68,
+   "gain_vs_base_weighted_f1": 0.8,
+   "gain_ci": [
+    0.23,
+    1.38
+   ]
+  },
+  "second_look": {
+   "accuracy": 67.09,
+   "weighted_f1": 65.49,
+   "macro_f1": 46.54
+  }
+ },
+ "published": [
+  [
+   "MCN-CL (2025)",
+   73.1,
+   null
+  ],
+  [
+   "AM\u00b2-EmoJE (2024)",
+   71.98,
+   null
+  ],
+  [
+   "DialogueLLM (2023)",
+   71.9,
+   null
+  ],
+  [
+   "AMuSE (2024)",
+   71.32,
+   73.28
+  ],
+  [
+   "InstructERC (2023)",
+   69.15,
+   null
+  ],
+  [
+   "M2FNet (2022)",
+   67.85,
+   null
+  ],
+  [
+   "TelME (2024)",
+   67.37,
+   null
+  ],
+  [
+   "GraphSmile (2024)",
+   66.71,
+   null
+  ],
+  [
+   "AMB-DSGDN (2026, base paper)",
+   66.18,
+   66.07
+  ]
+ ],
+ "context": {
+  "cells": [
+   "All context",
+   "Partner's earlier words",
+   "Neighbours' faces",
+   "Neighbours' voices"
+  ],
+  "groups": {
+   "MELD (multi-party)": [
+    0.45,
+    -0.27,
+    0.03,
+    -0.64
+   ],
+   "MC-EIU (dyadic)": [
+    -1.73,
+    -1.62,
+    -1.0,
+    -0.74
+   ]
+  }
+ },
+ "audit": {
+  "MELD, scene video": {
+   "text_largest_share": 99.3,
+   "video_adds": 0.15
+  },
+  "MELD, face video + CRCT": {
+   "text_largest_share": 83.2,
+   "video_adds": 1.17
+  },
+  "MC-EIU": {
+   "text_largest_share": 74.6,
+   "video_adds": 1.1
+  }
+ },
+ "reliability": {
+  "0_of_5": {
+   "n": 1,
+   "accuracy": 0.0
+  },
+  "1_of_5": {
+   "n": 31,
+   "accuracy": 38.7
+  },
+  "2_of_5": {
+   "n": 212,
+   "accuracy": 33.5
+  },
+  "3_of_5": {
+   "n": 443,
+   "accuracy": 45.6
+  },
+  "4_of_5": {
+   "n": 528,
+   "accuracy": 62.5
+  },
+  "5_of_5": {
+   "n": 1395,
+   "accuracy": 82.9
+  }
+ }
+}

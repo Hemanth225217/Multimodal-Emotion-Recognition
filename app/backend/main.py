@@ -194,6 +194,131 @@ def predict(req: PredictRequest):
     }
 
 
+# ---------------------------------------------------------------- final-review additions (12 Oct 2026)
+# The frozen final ensemble (validation-chosen families, first and official test look; see final_review/JOURNAL.md):
+# its cached test probabilities are averaged per family, then across families. Nothing is recomputed or tuned here.
+FINAL_ENSEMBLE = {
+    "H3c": ["logs/prob_cache/CTX_large_s42.pt", "logs/prob_cache/CTX_large_s1.pt"],
+    "DBc": ["logs/prob_cache/DEB_ctx_s42.pt", "logs/prob_cache/DEB_ctx_s1.pt"],
+    "ctx_dropout": [f"final_review/results/meld_ctx_crct/output/prob_cache/meld_ctx_s{s}.pt" for s in (42, 1, 2)],
+    "H3": ["logs/prob_cache/H3_large.pt"],
+}
+_ens = None
+_lookups = None
+
+
+def get_ensemble():
+    global _ens
+    if _ens is None:
+        fams = {}
+        sizes = None
+        for name, paths in FINAL_ENSEMBLE.items():
+            caches = [torch.load(PROJECT_ROOT / p, map_location="cpu", weights_only=False) for p in paths]
+            fams[name] = torch.stack([torch.as_tensor(c["test"], dtype=torch.float32) for c in caches]).mean(0)
+            sizes = list(caches[0]["test_sizes"])
+        offsets = [0]
+        for n in sizes:
+            offsets.append(offsets[-1] + n)
+        _ens = {"families": fams, "offsets": offsets, "sizes": sizes}
+    return _ens
+
+
+def get_lookups():
+    global _lookups
+    if _lookups is None:
+        from modules.data_loader import load_speaker_lookup, load_utterance_lookup
+        _lookups = (load_speaker_lookup("test"), load_utterance_lookup("test"))
+    return _lookups
+
+
+def _inputs(sample):
+    text = sample["text"].unsqueeze(0).to(DEVICE)
+    audio = sample["audio"].unsqueeze(0).to(DEVICE)
+    video = sample["video"].unsqueeze(0).to(DEVICE)
+    slots = sample["speaker_slots"].unsqueeze(0).to(DEVICE) if "num_speaker_slots" in _checkpoint_meta else None
+    return text, audio, video, slots
+
+
+@app.get("/dialogue/{dialogue_index}")
+@torch.no_grad()
+def dialogue(dialogue_index: int):
+    """Whole dialogue: speakers, lines, gold labels, model B predictions and the final ensemble's predictions."""
+    dataset = get_test_dataset()
+    if not (0 <= dialogue_index < len(dataset)):
+        raise HTTPException(404, "dialogue_index out of range")
+    sample = dataset[dialogue_index]
+    model = get_model()
+    text, audio, video, slots = _inputs(sample)
+    res = predict_dialogue(model, text, audio, video, speaker_slots=slots)
+    ens = get_ensemble()
+    assert ens["sizes"][dialogue_index] == sample["length"], "ensemble cache and dataset disagree on dialogue length"
+    off = ens["offsets"][dialogue_index]
+    speakers, lines = get_lookups()
+    out = []
+    d = int(sample["dialogue_id"])
+    for i, u in enumerate(sample["utterance_ids"]):
+        fam_probs = {f: p[off + i] for f, p in ens["families"].items()}
+        avg = torch.stack(list(fam_probs.values())).mean(0)
+        ens_pred = int(avg.argmax())
+        agree = sum(int(p.argmax()) == ens_pred for p in fam_probs.values())
+        out.append({
+            "utterance_index": i, "utterance_id": u, "speaker": speakers.get((d, int(u)), "?"),
+            "text": lines.get((d, int(u)), ""), "gold": EMOTION_NAMES[int(sample["labels"][i])],
+            "model_b": EMOTION_NAMES[int(res["predictions"][i])], "model_b_conf": float(res["probabilities"][i].max()),
+            "ensemble": EMOTION_NAMES[ens_pred], "ensemble_conf": float(avg[ens_pred]),
+            "ensemble_agree": agree, "ensemble_size": len(fam_probs),
+            "ensemble_votes": {f: EMOTION_NAMES[int(p.argmax())] for f, p in fam_probs.items()},
+        })
+    return {"dialogue_id": sample["dialogue_id"], "utterances": out}
+
+
+class AttributionRequest(BaseModel):
+    dialogue_index: int
+    utterance_index: int
+
+
+@app.post("/attribution")
+@torch.no_grad()
+def attribution(req: AttributionRequest):
+    """Context attribution for one target, as in final_review/analysis/context_attribution.py: hide one context cell
+    (speaker role x direction) in one modality and report the change in the probability of the originally predicted
+    class and whether the prediction changes. The target utterance itself is never modified."""
+    dataset = get_test_dataset()
+    sample = dataset[req.dialogue_index]
+    n, t = sample["length"], req.utterance_index
+    if not (0 <= t < n):
+        raise HTTPException(404, "utterance_index out of range")
+    model = get_model()
+    text, audio, video, slots = _inputs(sample)
+    base = torch.softmax(model(text, audio, video, speaker_slots=slots).reshape(n, NUM_CLASSES)[t], -1)
+    pred = int(base.argmax())
+    sl = sample["speaker_slots"].tolist()
+    cells = {
+        "Same speaker, before": [i for i in range(n) if i < t and sl[i] == sl[t]],
+        "Other speakers, before": [i for i in range(n) if i < t and sl[i] != sl[t]],
+        "Same speaker, after": [i for i in range(n) if i > t and sl[i] == sl[t]],
+        "Other speakers, after": [i for i in range(n) if i > t and sl[i] != sl[t]],
+        "All context": [i for i in range(n) if i != t],
+    }
+    mods = {"Words": (1, 0, 0), "Voice": (0, 1, 0), "Face": (0, 0, 1), "All channels": (1, 1, 1)}
+    grid = []
+    for cname, idx in cells.items():
+        row = {"cell": cname, "count": len(idx), "values": []}
+        for mname, (mt, ma, mv) in mods.items():
+            if not idx:
+                row["values"].append(None)
+                continue
+            mask = torch.zeros(1, n, 1, device=DEVICE)
+            mask[0, idx] = 1.0
+            tt, aa, vv = text * (1 - mask * mt), audio * (1 - mask * ma), video * (1 - mask * mv)
+            p = torch.softmax(model(tt, aa, vv, speaker_slots=slots).reshape(n, NUM_CLASSES)[t], -1)
+            row["values"].append({"modality": mname, "delta": float(p[pred] - base[pred]),
+                                  "new_prediction": EMOTION_NAMES[int(p.argmax())]})
+        grid.append(row)
+    return {"prediction": EMOTION_NAMES[pred], "confidence": float(base[pred]),
+            "gold": EMOTION_NAMES[int(sample["labels"][t])], "modalities": list(mods), "grid": grid}
+
+
 _frontend_dir = Path(__file__).resolve().parent.parent / "frontend"
 if _frontend_dir.exists():
     app.mount("/", StaticFiles(directory=str(_frontend_dir), html=True), name="frontend")
