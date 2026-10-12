@@ -25,13 +25,18 @@ def pct(x):
 def main():
     first = json.load(open(R / "final_scoring" / "TEST_SCORED_meld.json"))
     second_p = R / "final_scoring" / "TEST_SCORED_meld_SECOND_LOOK.json"
+    third = json.load(open(R / "final_scoring" / "TEST_SCORED_meld_THIRD_LOOK.json"))
     mceiu = json.load(open(R / "final_scoring" / "TEST_SCORED_mceiu.json"))
-    m = first["test"]["selected"]
+    m, t = first["test"]["selected"], third["test"]
     out = {
         "final": {
-            "meld": {"accuracy": pct(m["accuracy"]), "weighted_f1": pct(m["weighted_f1"]), "macro_f1": pct(m["macro_f1"]),
-                     "ci_weighted_f1": [pct(x) for x in first["test"]["selected_ci95"]["weighted_f1"]],
-                     "members": first["selected"]},
+            # headline = third, disclosed look (stacking chosen by CV for accuracy); all looks are listed in "looks"
+            "meld": {"accuracy": pct(t["accuracy"]), "weighted_f1": pct(t["weighted_f1"]), "macro_f1": pct(t["macro_f1"]),
+                     "ci_weighted_f1": [pct(x) for x in third["ci95"]["weighted_f1"]],
+                     "ci_accuracy": [pct(x) for x in third["ci95"]["accuracy"]],
+                     "procedure": "stacking of 17 families (third, disclosed test look)"},
+            "first_look": {"accuracy": pct(m["accuracy"]), "weighted_f1": pct(m["weighted_f1"]), "macro_f1": pct(m["macro_f1"]),
+                           "members": first["selected"]},
             "prefinal": {k: pct(v) for k, v in first["test"]["reference"]["metrics"].items()},
             "mceiu": {"accuracy": pct(mceiu["test"]["selected"]["accuracy"]), "weighted_f1": pct(mceiu["test"]["selected"]["weighted_f1"]),
                       "macro_f1": pct(mceiu["test"]["selected"]["macro_f1"]),

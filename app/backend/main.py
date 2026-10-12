@@ -13,6 +13,7 @@ The missing-modality toggle is real too: setting use_audio=false actually
 zeroes the audio tensor and re-runs the model.
 """
 
+import json
 import sys
 from pathlib import Path
 
@@ -203,8 +204,19 @@ FINAL_ENSEMBLE = {
     "ctx_dropout": [f"final_review/results/meld_ctx_crct/output/prob_cache/meld_ctx_s{s}.pt" for s in (42, 1, 2)],
     "H3": ["logs/prob_cache/H3_large.pt"],
 }
+# The headline model (third, disclosed test look: stacking of 17 families). Its stored test predictions are exported by
+# final_review/tools/export_stacked_predictions.py, which checks them against the recorded result.
+STACKED_PREDICTIONS = PROJECT_ROOT / "final_review/results/final_scoring/third_look_test_predictions.json"
 _ens = None
+_stacked = None
 _lookups = None
+
+
+def get_stacked():
+    global _stacked
+    if _stacked is None:
+        _stacked = json.loads(STACKED_PREDICTIONS.read_text()) if STACKED_PREDICTIONS.exists() else {}
+    return _stacked
 
 
 def get_ensemble():
@@ -256,7 +268,14 @@ def dialogue(dialogue_index: int):
     speakers, lines = get_lookups()
     out = []
     d = int(sample["dialogue_id"])
+    stk = get_stacked()
+    if stk:
+        assert stk["sizes"][dialogue_index] == sample["length"], "stacked predictions and dataset disagree on dialogue length"
     for i, u in enumerate(sample["utterance_ids"]):
+        final = {}
+        if stk:
+            fp = stk["proba"][off + i]
+            final = {"final": EMOTION_NAMES[stk["pred"][off + i]], "final_conf": float(max(fp))}
         fam_probs = {f: p[off + i] for f, p in ens["families"].items()}
         avg = torch.stack(list(fam_probs.values())).mean(0)
         ens_pred = int(avg.argmax())
@@ -268,6 +287,7 @@ def dialogue(dialogue_index: int):
             "ensemble": EMOTION_NAMES[ens_pred], "ensemble_conf": float(avg[ens_pred]),
             "ensemble_agree": agree, "ensemble_size": len(fam_probs),
             "ensemble_votes": {f: EMOTION_NAMES[int(p.argmax())] for f, p in fam_probs.items()},
+            **final,
         })
     return {"dialogue_id": sample["dialogue_id"], "utterances": out}
 

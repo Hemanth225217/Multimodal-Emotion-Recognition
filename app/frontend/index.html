@@ -100,7 +100,7 @@
         <h2>1. Conversation (MELD test set)</h2>
         <select id="dialogueSelect"></select>
         <div class="chips" style="margin-bottom:10px">
-          <span class="chip">Gold = annotated emotion</span><span class="chip">B = single model</span><span class="chip">Ens = final ensemble</span>
+          <span class="chip">Gold = annotated emotion</span><span class="chip">B = single model</span><span class="chip">Final = stacked final model</span><span class="chip">● = voting-ensemble agreement</span>
         </div>
         <div class="chat" id="chat"></div>
       </div>
@@ -128,8 +128,8 @@
       <div class="panel">
         <h2>MELD test: comparison with published systems (weighted F1 %)</h2>
         <table class="cmp" id="cmp"></table>
-        <div class="muted" style="margin-top:8px">Published values as reported in each paper (verified). Ours: validation-chosen
-          ensemble, test set scored once, with a 95% bootstrap interval. Within the interval we are comparable to the base paper.</div>
+        <div class="muted" style="margin-top:8px">Published values as reported in each paper (verified). Ours: stacked ensemble chosen by
+          cross-validation on the validation set; third disclosed look at the test set (all three looks are reported), with a 95% bootstrap interval. Within the interval we are comparable to the base paper.</div>
       </div>
       <div class="panel">
         <h2>Key findings</h2>
@@ -156,7 +156,7 @@
   </section>
 
   <div class="foot">Every live prediction is a real forward pass of the trained fusion model (model B) on genuine MELD test
-    utterances; the ensemble column shows the stored test predictions of the frozen final ensemble.<br>
+    utterances; the Final column shows the stored test predictions of the stacked final model, and the dots the agreement of a 4-family voting ensemble.<br>
     The original MELD audio extractor was never released, so new recordings cannot be mapped into its feature space.</div>
 </div>
 
@@ -187,11 +187,12 @@ async function init() {
     $("dialogueSelect").innerHTML = examples.map(e =>
       `<option value="${e.dialogue_index}">Dialogue ${e.dialogue_id} (${e.num_utterances} lines)</option>`).join("");
     $("dialogueSelect").addEventListener("change", e => loadDialogue(parseInt(e.target.value)));
-    $("status").textContent = `Model ready on ${health.device} · ${examples.length} test dialogues · single model B + frozen final ensemble`;
+    $("status").textContent = `Model ready on ${health.device} · ${examples.length} test dialogues · single model B + stored final-model predictions`;
     const d72 = examples.find(e => String(e.dialogue_id) === "72");
     await loadDialogue(d72 ? d72.dialogue_index : 0);
     if (d72) selectLine(5);
-    loadResults();
+    await loadResults();
+    if (location.hash === "#results") document.querySelector('.tab[data-tab="results"]').click();
   } catch (e) {
     $("status").textContent = "Could not reach the backend. Is it running?";
     console.error(e);
@@ -209,7 +210,8 @@ async function loadDialogue(i) {
       <div class="tags">
         <span class="tag">Gold <b>${EMOJI[u.gold]} ${u.gold}</b></span>
         <span class="tag ${u.model_b === u.gold ? "ok" : "bad"}">B ${u.model_b}</span>
-        <span class="tag ${u.ensemble === u.gold ? "ok" : "bad"}">Ens ${u.ensemble}</span>
+        ${u.final ? `<span class="tag ${u.final === u.gold ? "ok" : "bad"}">Final ${u.final}</span>`
+                  : `<span class="tag ${u.ensemble === u.gold ? "ok" : "bad"}">Ens ${u.ensemble}</span>`}
       </div>
     </div>`).join("");
   [...$("chat").children].forEach(el => el.addEventListener("click", () => selectLine(parseInt(el.dataset.i))));
@@ -234,9 +236,11 @@ function selectLine(i) {
           <label><input type="checkbox" id="useVideo" checked> Face / scene</label>
         </div>
         <button class="btn" id="analyzeBtn">ANALYZE</button>
-        <div class="sec">Final ensemble (stored test prediction)</div>
+        ${u.final ? `<div class="sec">Final model (stacking of 17 families, stored test prediction)</div>
+        <div class="muted"><b style="color:var(--text)">${EMOJI[u.final]} ${u.final}</b> (${Math.round(u.final_conf * 100)}%)</div>` : ""}
+        <div class="sec">Voting ensemble of 4 families (first test look)</div>
         <div class="chips">${Object.entries(u.ensemble_votes).map(([f, e]) => `<span class="chip">${f}: ${EMOJI[e]} ${e}</span>`).join("")}</div>
-        <div class="muted" style="margin-top:6px">Ensemble: <b style="color:var(--text)">${u.ensemble}</b> (${Math.round(u.ensemble_conf * 100)}%),
+        <div class="muted" style="margin-top:6px">Vote: <b style="color:var(--text)">${u.ensemble}</b> (${Math.round(u.ensemble_conf * 100)}%),
           ${u.ensemble_agree} of ${u.ensemble_size} members agree.</div>
       </div>
       <div id="pred"><div class="muted" style="padding:30px;text-align:center">Press ANALYZE.</div></div>
@@ -300,12 +304,12 @@ async function loadResults() {
   const s = await fetch("summary.json").then(r => r.json());
   const f = s.final;
   $("cards").innerHTML = `
-    <div class="card"><div class="lbl">MELD test accuracy</div><div class="big">${f.meld.accuracy}%</div><div class="muted">final ensemble (scored once)</div></div>
-    <div class="card"><div class="lbl">MELD test weighted F1</div><div class="big">${f.meld.weighted_f1}%</div><div class="muted">95% CI ${f.meld.ci_weighted_f1[0]}–${f.meld.ci_weighted_f1[1]}</div></div>
+    <div class="card"><div class="lbl">MELD test accuracy</div><div class="big">${f.meld.accuracy}%</div><div class="muted">95% CI ${f.meld.ci_accuracy[0]}–${f.meld.ci_accuracy[1]}; stacked final model (3rd disclosed look)</div></div>
+    <div class="card"><div class="lbl">MELD test weighted F1</div><div class="big">${f.meld.weighted_f1}%</div><div class="muted">95% CI ${f.meld.ci_weighted_f1[0]}–${f.meld.ci_weighted_f1[1]}. Earlier looks: ${f.first_look.accuracy} / ${f.first_look.weighted_f1}${f.second_look ? `, ${f.second_look.accuracy} / ${f.second_look.weighted_f1}` : ""}</div></div>
     <div class="card"><div class="lbl">MC-EIU test (2nd dataset)</div><div class="big">${f.mceiu.accuracy}%</div><div class="muted">weighted F1 ${f.mceiu.weighted_f1}%, context dropout +${f.mceiu.gain_vs_base_weighted_f1} (CI ${f.mceiu.gain_ci[0]} to ${f.mceiu.gain_ci[1]})</div></div>
     <div class="card"><div class="lbl">Pre-final ensemble</div><div class="big">${f.prefinal.accuracy}%</div><div class="muted">weighted F1 ${f.prefinal.weighted_f1}%</div></div>`;
   const rows = s.published.map(([n, w, a]) => ({ n, w, a, ours: false }));
-  rows.push({ n: "This project (final ensemble)", w: f.meld.weighted_f1, a: f.meld.accuracy, ours: true });
+  rows.push({ n: "This project (final, stacked)", w: f.meld.weighted_f1, a: f.meld.accuracy, ours: true });
   rows.sort((x, y) => y.w - x.w);
   $("cmp").innerHTML = `<tr><th>System</th><th>Weighted F1</th><th>Accuracy</th></tr>` + rows.map(r =>
     `<tr class="${r.ours ? "ours" : ""}"><td>${r.n}</td><td>${r.w.toFixed(2)}</td><td>${r.a ? r.a.toFixed(2) : "—"}</td></tr>`).join("");

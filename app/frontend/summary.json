@@ -1,13 +1,23 @@
 {
  "final": {
   "meld": {
+   "accuracy": 68.35,
+   "weighted_f1": 66.84,
+   "macro_f1": 47.61,
+   "ci_weighted_f1": [
+    64.65,
+    69.06
+   ],
+   "ci_accuracy": [
+    66.33,
+    70.41
+   ],
+   "procedure": "stacking of 17 families (third, disclosed test look)"
+  },
+  "first_look": {
    "accuracy": 67.59,
    "weighted_f1": 65.97,
    "macro_f1": 45.37,
-   "ci_weighted_f1": [
-    63.65,
-    68.28
-   ],
    "members": [
     "H3c",
     "DBc",
