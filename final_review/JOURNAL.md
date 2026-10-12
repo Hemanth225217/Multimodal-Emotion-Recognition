@@ -260,3 +260,11 @@
   -0.82 [-1.73, +0.07]. The extra seeds did not help. Records: TEST_SCORED_meld.json = first look (the protocol's
   result, 67.59 / 65.97 / 45.37), TEST_SCORED_meld_SECOND_LOOK.json = this one. Both are reported. GPU left 1.36 h; no
   further accuracy experiments.
+- **12 Oct about 17:45, decision by the user before any further result:** for the next (third, disclosed) MELD test
+  look, the selection target is ACCURACY instead of weighted F1 (all three metrics are reported). Candidates: the v2
+  list (incl. DBc 4 seeds) plus the new family H3c_face (RoBERTa-large + context + face-expression video, kernel
+  `meld-h3c-face`, launched 17:40, last GPU quota). Selection procedures compared ONLY by cross-validation inside the
+  MELD validation set (5 dialogue-level folds x 3 repeats): (M1) greedy forward selection by accuracy, equal weights;
+  (M2) M1 + one class-prior exponent tau fitted on the training folds; (M3) logistic-regression stacking of the family
+  log-probabilities. The procedure with the best mean cross-validated accuracy is refitted on the full validation set and
+  scored on test once.
