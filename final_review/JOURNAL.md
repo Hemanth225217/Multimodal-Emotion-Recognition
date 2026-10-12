@@ -248,3 +248,9 @@
   MC-EIU: selection = ctx_dropout, base (val 51.18 / 47.76). **Test 52.13 / 48.74 / 23.68**, 95 % CI wF1 [46.39, 51.00];
   vs MC-EIU base 50.83 / 47.94: wF1 +0.80 [+0.23, +1.38] (P > 0 = 0.997). Families: ctx_dropout 52.87 / 49.47, base
   50.83 / 47.94, crct 52.14 / 46.43. Context dropout's gain replicates on the MC-EIU test set.
+- **After the first test scoring, at the user's request ("we should have better numbers"):** two more seeds (2 and 3)
+  of the DBc family (DeBERTa-v3-large, context 2/1, freeze 16, code of branch main, unchanged apart from .gitattributes)
+  are trained on Kaggle (`meld-deberta-ctx-s2`, `-s3`). Pre-registered BEFORE their results: candidate list v2 =
+  frozen list with DBc = seeds 42, 1, 2, 3 (`final_candidates_v2_second_look.json`); same greedy rule; its test scoring
+  is a disclosed SECOND look at the MELD test set and both results (first and second look) are reported. Expected gain
+  small (0 to +0.6 wF1); GPU left 3.9 h.

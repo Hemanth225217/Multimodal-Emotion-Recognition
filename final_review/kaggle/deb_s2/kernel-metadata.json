@@ -1,0 +1,17 @@
+{
+  "id": "hemanths0411/meld-deberta-ctx-s2",
+  "title": "MELD Deberta Ctx S2",
+  "code_file": "deb_seed.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "keywords": ["gpu"],
+  "dataset_sources": ["hemanths0411/meld-emotion-features"],
+  "kernel_sources": [],
+  "competition_sources": [],
+  "model_sources": [],
+  "machine_shape": "NvidiaTeslaT4"
+}
