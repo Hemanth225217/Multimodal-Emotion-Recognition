@@ -254,3 +254,9 @@
   frozen list with DBc = seeds 42, 1, 2, 3 (`final_candidates_v2_second_look.json`); same greedy rule; its test scoring
   is a disclosed SECOND look at the MELD test set and both results (first and second look) are reported. Expected gain
   small (0 to +0.6 wF1); GPU left 3.9 h.
+- **DBc seeds 2 and 3** (`meld-deberta-ctx-s2/-s3`, 71 / 74 min): val wF1 62.54 / 62.99. **Disclosed second test look**
+  with candidate list v2 (DBc = 4 seeds, pre-registered in 055e7d1): greedy on validation picked H3c, control, H3,
+  face_crct, H2c (val 68.23 / 66.47 / 51.61). Test 67.09 / 65.49 / 46.54, 95 % CI wF1 [63.29, 67.72]; vs pre-final
+  -0.82 [-1.73, +0.07]. The extra seeds did not help. Records: TEST_SCORED_meld.json = first look (the protocol's
+  result, 67.59 / 65.97 / 45.37), TEST_SCORED_meld_SECOND_LOOK.json = this one. Both are reported. GPU left 1.36 h; no
+  further accuracy experiments.
