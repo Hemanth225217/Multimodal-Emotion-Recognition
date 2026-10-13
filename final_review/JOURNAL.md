@@ -61,7 +61,7 @@
   `training/train_finetune.py` and `evaluation/cache_member_probs.py`, plus the new `final_review/tools/make_audio_pickle.py`.
   Compile-checked only, never run on real features. First step when work resumes: a CPU smoke test with a synthetic audio
   pickle in the legacy layout, then commit and push, then write the fusion kernel.
-- **Evening, work resumed (new Claude session after a handoff).** Plumbing reviewed and committed (`e4495fa`, not yet pushed).
+- **Evening, work resumed (new assistant session after a handoff).** Plumbing reviewed and committed (`e4495fa`, not yet pushed).
   Check added: `data_emotion.p` and the three MELD CSVs hold identical utterance sets for every dialogue (1,038 / 114 / 280),
   so the builder's CSV-ranked rows match the datasets' position-based alignment.
 - **CPU smoke test passed.** Fake kernel-shaped outputs (3 layers x 1024-D, rows shuffled, one clip missing per split, plus a
