@@ -144,7 +144,7 @@ Total: roughly 35 to 45 T4 hours, which is about two weekly quotas (30 hours eac
 
 **What to tell the guide.** Say what each person actually did, in plain words, by area: literature and base-paper choice, data and features, model and training, experiments and evaluation, analysis and demo, report and slides. For each area name who led it and who helped.
 
-**Be open about the AI assistant.** As of 7 October, all 67 commits in the repository are authored by Hemanth S, and 66 carry a "Co-Authored-By: Claude" line that GitHub shows. So the honest and safest line is to say that an AI coding assistant helped implement the project under your direction, and to check your course's policy on AI assistance. Then describe what you decided, ran, checked and can explain: which base paper, which experiments to run or drop (for example dropping graph fusion), what the results mean, and how to run the demo. Do not describe code as hand-written if it was not.
+**Be open about the AI assistant.** As of 7 October, all 67 commits in the repository are authored by Hemanth S, and 66 carry a "Co-Authored-By" AI-assistant line that GitHub shows. So the honest and safest line is to say that an AI coding assistant helped implement the project under your direction, and to check your course's policy on AI assistance. Then describe what you decided, ran, checked and can explain: which base paper, which experiments to run or drop (for example dropping graph fusion), what the results mean, and how to run the demo. Do not describe code as hand-written if it was not.
 
 Template to fill in with the truth:
 

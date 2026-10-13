@@ -31,7 +31,7 @@
   is `meld-audio-test-features`, the metadata id was `meld-audio-test`). Not re-run: on 2026-10-07 you asked for planning only.
   Fix on restart: title it "MELD Audio Test" so the slug equals the id.
 - Repository facts for the contribution statement: as of 2026-10-07, 67 commits, all authored by Hemanth S, 66 with a
-  "Co-Authored-By: Claude" trailer. Pranitha N.S does not appear in the history (see `MASTER_PLAN.md` section 9).
+  "Co-Authored-By" AI-assistant trailer. Pranitha N.S does not appear in the history (see `MASTER_PLAN.md` section 9).
 - **`MASTER_PLAN.md` written** (planning only): tiers A to D of targets with rough odds, 15 levers with estimated gains and costs,
   five candidate contributions with a prior-art protocol, phases with gates, safeguards, logistics, risks, the two-person split.
   A Word copy is in `Downloads\Final_Review_Master_Plan.docx`.
