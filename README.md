@@ -1,5 +1,7 @@
 # Multimodal Emotion Recognition using Fusion Deep Learning
 
+[![CI](https://github.com/Hemanth225217/Multimodal-Emotion-Recognition/actions/workflows/ci.yml/badge.svg?branch=final-review)](https://github.com/Hemanth225217/Multimodal-Emotion-Recognition/actions/workflows/ci.yml)
+
 Context-aware **adaptive tri-modal fusion** for conversational emotion recognition on
 [MELD](https://affective-meld.github.io/) (text + audio + video, 7 emotion classes).
 
